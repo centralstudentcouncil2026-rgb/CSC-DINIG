@@ -1,5 +1,5 @@
-import {loginView} from './login-view.js?v=fc796dfb420a';
-import {request as api,isConfigured,hasSession,guestContext} from './backend.js?v=fc796dfb420a';
+import {loginView} from './login-view.js?v=060fd5cd3ffb';
+import {request as api,isConfigured,hasSession,guestContext} from './backend.js?v=060fd5cd3ffb';
 const main=document.querySelector('#main');
 const appRoute=()=>location.hash.startsWith('#/')?location.hash.slice(1):(document.body.dataset.entry==='staff'?'/staff':'/');
 const currentPath=()=>appRoute().split('?')[0];
@@ -22,11 +22,13 @@ function passwordToggles(){for(const button of main.querySelectorAll('[data-pass
 function studentPage(view){
  document.body.dataset.studentPage=view;
  const back=document.querySelector('header [data-dashboard-back]');
+ delete back.dataset.staffLogout;back.removeAttribute('aria-disabled');
  const front=view==='home';back.href=front?dashboardUrls[portal]:'#/';
  back.innerHTML='← <span>'+ (front?'CSC Websites':view==='review'?'Edit concern':view==='report'?'Track concern':'D.I.N.I.G. Home')+'</span>';
  back.setAttribute('aria-label',front?'Back to CSC Websites':view==='review'?'Back to concern details':view==='report'?'Back to tracking form':'Back to D.I.N.I.G. home');
 }
-function adminHeader(){const back=document.querySelector('header [data-dashboard-back]');back.href=dashboardUrls.officers;back.innerHTML='↪ <span>Log out</span>';back.setAttribute('aria-label','Log out');back.dataset.staffLogout='true';}
+function workspaceHeader(){delete document.body.dataset.studentPage;const back=document.querySelector('header [data-dashboard-back]');back.href=dashboardUrls[portal];back.innerHTML='← <span>CSC Websites</span>';back.setAttribute('aria-label','Back to CSC Websites');delete back.dataset.staffLogout;back.removeAttribute('aria-disabled');}
+function adminHeader(){workspaceHeader();const back=document.querySelector('header [data-dashboard-back]');back.href=dashboardUrls.officers;back.innerHTML='↪ <span>Log out</span>';back.setAttribute('aria-label','Log out');back.dataset.staffLogout='true';}
 async function logoutAdmin(){const back=document.querySelector('header [data-staff-logout]');if(back?.getAttribute('aria-disabled')==='true')return;if(back){back.setAttribute('aria-disabled','true');back.querySelector('span').textContent='Logging out…';}try{await api('/staff/logout',{});}catch{}finally{state=null;location.replace(dashboardUrls.officers);}}
 async function navigate(path){if(unsavedCode&&!confirm('Have you saved your tracking code? It cannot be recovered after leaving this screen.'))return;unsavedCode=false;history.pushState({},'','#'+path);await render();window.scrollTo(0,0);main.focus();}
 document.addEventListener('click',event=>{
@@ -43,7 +45,7 @@ document.addEventListener('click',event=>{
 window.addEventListener('popstate',()=>{unsavedCode=false;render();});
 window.addEventListener('beforeunload',event=>{if(unsavedCode){event.preventDefault();event.returnValue='';}});
 async function render(){
- try{document.title='CSC D.I.N.I.G.';delete document.body.dataset.studentPage;const back=document.querySelector('header [data-dashboard-back]');back.href=dashboardUrls[portal];back.innerHTML='← <span>CSC Websites</span>';back.setAttribute('aria-label','Back to CSC Websites');delete back.dataset.staffLogout;back.removeAttribute('aria-disabled');if(currentPath()==='/staff'&&state?.staff&&hasSession())adminHeader();
+ try{document.title='CSC D.I.N.I.G.';
   // Student tokens stay memory-only; admin sessions can resume in this tab.
   // Public screens need no remote
   // authentication check before they can appear or accept input.
@@ -63,14 +65,14 @@ async function render(){
     return;
    }
   }
-  if(currentPath()==='/staff'&&!state?.staff&&hasSession())main.innerHTML='<section class="panel desk-status" role="status"><span class="desk-spinner" aria-hidden="true"></span><p>Restoring your admin session…</p></section>';
+  if(currentPath()==='/staff'&&!state?.staff&&hasSession()){workspaceHeader();main.innerHTML='<section class="panel desk-status" role="status"><span class="desk-spinner" aria-hidden="true"></span><p>Restoring your admin session…</p></section>';}
   state=await api('/session');csrf=state.csrf;
-  if(!isConfigured()&&currentPath()!=='/'){main.innerHTML='<section class="compact panel"><h1>We’re preparing to listen.</h1><p class="muted">The council is connecting this service. Concern submission and staff login will open after setup is complete.</p><a class="button" href="#/">Return home</a></section>';return;}
+  if(!isConfigured()&&currentPath()!=='/'){workspaceHeader();main.innerHTML='<section class="compact panel"><h1>We’re preparing to listen.</h1><p class="muted">The council is connecting this service. Concern submission and staff login will open after setup is complete.</p><a class="button" href="#/">Return home</a></section>';return;}
   if(currentPath()==='/submit')submission();
   else if(currentPath()==='/track'){if(state.student)await studentReport();else tracking();}
   else if(currentPath()==='/staff'){if(state.staff){const id=new URLSearchParams(appRoute().split('?')[1]||'').get('report');if(id)await staffReport(id);else await staffDashboard();}else login();}
   else home();
- }catch(e){main.innerHTML=`<section class="compact panel"><h1>Unable to open this page</h1><p class="muted">${esc(e.message)}</p><a class="button" href="#/">Return home</a></section>`;}
+ }catch(e){workspaceHeader();main.innerHTML=`<section class="compact panel"><h1>Unable to open this page</h1><p class="muted">${esc(e.message)}</p><a class="button" href="#/">Return home</a></section>`;}
 }
 function home(){studentPage('home');main.innerHTML=`<section class="hero"><div class="eyebrow">The Central Student Council · Listening with purpose</div><h1>CSC – D.I.N.I.G.</h1><p class="meaning">Discuss Issues, Needs, Ideas, and Grievances</p><p>A space for your voice. A channel for action.</p><div class="actions"><a class="button gold" href="#/submit">Submit a Concern <span aria-hidden="true">↗</span></a><a class="button secondary" href="#/track">Track My Concern</a></div></section>
  <section class="home-grid" aria-label="How it works"><article class="panel"><span class="step-number">01</span><h3>Tell us what matters.</h3><p class="muted">Choose a code name and share your concern. No student account is needed.</p></article><article class="panel"><span class="step-number">02</span><h3>Keep your private code.</h3><p class="muted">Save the unique tracking code for your report. It is your key to following up.</p></article><article class="panel"><span class="step-number">03</span><h3>Follow the conversation.</h3><p class="muted">Read updates, receive replies from the administrator, and review the outcome in one place.</p></article></section>
@@ -92,7 +94,7 @@ function confirmation(result){studentPage('confirmation');unsavedCode=true;main.
  main.querySelector('#open').onclick=async event=>{event.target.disabled=true;try{await api('/track',{code:result.trackingCode});result.trackingCode='';unsavedCode=false;await navigate('/track');}catch(e){main.querySelector('.form-error').textContent=e.message;event.target.disabled=false;}};
 }
 function tracking(){studentPage('track');main.innerHTML=`<section class="compact"><div class="page-intro"><div class="eyebrow">Your private conversation</div><h1>Track my concern</h1><p>Use your private tracking code. Your code name and reference number cannot grant access.</p></div><form class="panel stack"><label>Private tracking code<input name="code" required autocomplete="off" spellcheck="false" autocapitalize="none" maxlength="256"></label>${errorBox}<button type="submit">Open my concern</button><p class="hint">Keep this code private. Lost codes cannot be recovered in this version.</p></form></section>`;bind(main.querySelector('form'),async data=>{await api('/track',{code:data.get('code')});main.querySelector('input').value='';await render();});}
-function login(){
+function login(){workspaceHeader();
  const logo=new URL('./assets/csc-torch.png',import.meta.url).href;
  main.innerHTML=loginView({dashboardUrl:dashboardUrls[portal],logo,errorBox});
  passwordToggles();bind(main.querySelector('form'),async(data,form)=>{const result=await api('/staff/login',{...Object.fromEntries(data),bootstrap:true,fast:true});form.elements.password.value='';
