@@ -52,10 +52,14 @@ test('approved referrals, explicit resolution and independent further-review not
  assert(h.request('/staff/reports/'+id+'/action',{action:'status',status:'Under Review',reason:'Independent review started'},reviewerTokens).ok);
  assert(h.request('/staff/reports/'+id+'/action',{action:'status',status:'Resolved',reason:'Reviewed outcome'},reviewerTokens).ok);assert(h.request('/student/action',{kind:'confirmed',body:''},student).ok);assert.equal(h.request('/student/report',{},student).data.report.status,'Closed');
 });
-test('private attachments are returned only after report authorization',()=>{
- h.clearLimits();const submitted=h.request('/reports',concern());assert(submitted.ok);const tokens={studentToken:h.request('/track',{code:submitted.data.trackingCode}).data.studentToken};assert(h.request('/student/message',{body:'Supporting follow-up',attachments:[{name:'proof.png',data:Buffer.from([137,80,78,71,13,10,26,10,0]).toString('base64')}]},tokens).ok);const view=h.request('/student/report',{},tokens).data,file=view.attachments[0];assert(!JSON.stringify(view).includes('drive_id'));assert(h.request('/student/attachments/'+file.id,{},tokens).ok);assert.equal(h.request('/student/attachments/'+file.id,{},student).code,'NOT_FOUND');
- assert.equal(h.request('/reports',{...concern(),attachments:[{name:'bad.html',data:Buffer.from('<script>evil()</script>').toString('base64')}]}).code,'VALIDATION');
+test('file attachments are rejected and no download route is exposed',()=>{
+ h.clearLimits();assert.equal(h.request('/student/message',{body:'Follow-up',attachments:[{name:'proof.png',data:'anything'}]},student).code,'VALIDATION');
+ assert.equal(h.request('/staff/reports/'+id+'/message',{body:'Reply',attachments:[{name:'proof.pdf',data:'anything'}]},admin).code,'VALIDATION');
+ assert.equal(h.request('/student/attachments/'+crypto.randomUUID(),{},student).code,'INVALID_ACTION');
+ assert.deepEqual(h.request('/student/report',{},student).data.attachments,[]);
+ assert.equal(h.request('/reports',{...concern(),attachments:[{name:'bad.html',data:'anything'}]}).code,'VALIDATION');
 });
+
 test('atomic failed writes create neither report nor credential, and spreadsheet cells cannot execute formulas',()=>{
  const before=h.rows('Reports').length;h.failNextBatch();assert.equal(h.request('/reports',concern()).code,'UNCERTAIN');assert.equal(h.rows('Reports').length,before);assert.equal(h.rows('Credentials').length,before);
  assert(h.request('/reports',{...concern(),subject:'=IMPORTXML("evil")'}).ok);const row=h.sheets.get('Reports').values.at(-1);assert(row[1].startsWith('{'));assert(JSON.parse(row[1]).subject.startsWith('='));

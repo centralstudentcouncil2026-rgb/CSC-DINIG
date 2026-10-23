@@ -2,12 +2,12 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import {createHarness} from './sheets-harness.js';
-const h=createHarness({source:'FreshStart.gs',crypto:false,noSecret:true});
+const h=createHarness({source:'FreshStart.gs',crypto:false,noSecret:true,noDrive:true});
 const credentials={email:'aupcscdinig@aup.edu.ph',password:'Test-only initial password 2026!'};
 let admin,student,reportId;
 test('fresh bound setup needs no crypto library and automatically prepares one admin',()=>{
- assert.equal(h.context.DinigCrypto,undefined);assert.match(h.props.get('TOKEN_SECRET'),/^[a-f\d]{64}$/);assert.equal(h.props.has('ADMIN_PASSWORD'),false);assert(h.props.has('FAST_ADMIN_RECORD'));assert.equal(h.rows('Staff').length,1);
- const health=JSON.parse(h.context.doGet({parameter:{action:'health'}}).text).data;assert.equal(health.fastAdminReady,true);assert.equal(health.backendVersion,'dinig-fresh-single-admin-v1');
+ assert.equal(h.context.DinigCrypto,undefined);assert.equal(h.context.DriveApp,undefined);assert.match(h.props.get('TOKEN_SECRET'),/^[a-f\d]{64}$/);assert.equal(h.props.has('ADMIN_PASSWORD'),false);assert(h.props.has('FAST_ADMIN_RECORD'));assert.equal(h.rows('Staff').length,1);
+ const health=JSON.parse(h.context.doGet({parameter:{action:'health'}}).text).data;assert.equal(health.fastAdminReady,true);assert.equal(health.backendVersion,'dinig-fresh-single-admin-v2');
 });
 test('fresh login reads no Sheet and creates only a cached session',()=>{
  const open=h.context.SpreadsheetApp.openById;h.context.SpreadsheetApp.openById=()=>{throw Error('Unexpected spreadsheet read');};

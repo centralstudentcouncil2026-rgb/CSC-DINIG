@@ -7,7 +7,7 @@
  */
 const DINIG_CATEGORIES = ['Academic','Facilities','Student Services','Safety and Welfare','Organizations','Ideas and Suggestions','Others'];
 const DINIG_STATUSES = ['Submitted','Under Review','Awaiting Student Response','In Progress','Referred','Resolved','Closed'];
-const DINIG_TABLES = ['Reports','Credentials','Messages','Attachments','History','Assignments','Referrals','Staff','Audit','Feedback','Notifications','Routing','Offices','Sessions','RateLimits','SubmissionKeys','Commits'];
+const DINIG_TABLES = ['Reports','Credentials','Messages','History','Assignments','Referrals','Staff','Audit','Feedback','Notifications','Routing','Offices','Sessions','RateLimits','SubmissionKeys','Commits'];
 const DINIG_IDLE = 30 * 60 * 1000, DINIG_ABSOLUTE = 8 * 60 * 60 * 1000;
 
 
@@ -20,7 +20,6 @@ function setup() {
  const spreadsheet=SpreadsheetApp.getActiveSpreadsheet();
  if(!spreadsheet)throw Error('Open the new Google Sheet, then Extensions > Apps Script.');
  if(existing&&existing!==spreadsheet.getId())throw Error('Use a new bound Apps Script project for the new Sheet.');
- assertPrivate_(DriveApp.getFileById(spreadsheet.getId()));
  props.setProperty('SPREADSHEET_ID',spreadsheet.getId());
  DINIG_TABLES.forEach(name=>{const sheet=spreadsheet.getSheetByName(name)||spreadsheet.insertSheet(name);if(!sheet.getLastRow()){sheet.getRange(1,1,1,3).setValues([['id','record_json','updated_at']]);sheet.setFrozenRows(1);sheet.getRange(1,1,1,3).setFontWeight('bold').setBackground('#fff2bc');}else if(sheet.getRange(1,1,1,3).getValues()[0].join('|')!=='id|record_json|updated_at')throw Error('Unexpected table headers: '+name);});
  // Finish SpreadsheetApp's buffered tab/header writes before the separate API.
@@ -28,10 +27,7 @@ function setup() {
  // This read-only preflight exposes Google's service/permission error in the
  // owner editor without logging a write payload containing account data.
  Sheets.Spreadsheets.get(spreadsheet.getId(),{fields:'spreadsheetId'});
- let folder;
- if(props.getProperty('ATTACHMENT_FOLDER_ID'))folder=DriveApp.getFolderById(props.getProperty('ATTACHMENT_FOLDER_ID'));
- else{folder=DriveApp.createFolder('CSC D.I.N.I.G. — Private Attachments');props.setProperty('ATTACHMENT_FOLDER_ID',folder.getId());}
- assertPrivate_(folder);
+
  locked_(function(){const db=store_();if(!rows_(db,'Staff').some(s=>s.email==='aupcscdinig@aup.edu.ph')){const password=props.getProperty('ADMIN_PASSWORD')||'';text_(password,'Initial administrator password',12,256);const adminId=Utilities.getUuid();put_(db,'Staff',Object.assign({id:adminId,user_id:adminId,public_id:Utilities.getUuid(),email:'aupcscdinig@aup.edu.ph',display_name:'D.I.N.I.G. Administrator',role:'administrator',enabled:true,sensitive_access:true,created_at:now_()},passwordRecord_(password)));}DINIG_CATEGORIES.forEach(category=>{if(!get_(db,'Routing',category))put_(db,'Routing',{id:category,category:category,restricted:false,reviewer_id:null,target_hours:null});});commit_(db);});
  props.deleteProperty('ADMIN_PASSWORD');
  prepareFastAdminLogin();
@@ -40,10 +36,10 @@ function setup() {
 
 function doGet(e) {
  // No public report listing, credential lookup, file endpoint or staff directory.
- return respond_(function(){if(e&&e.parameter&&e.parameter.action==='health')return {service:'CSC D.I.N.I.G.',configured:!!PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'),backendVersion:'dinig-fresh-single-admin-v1',fastAdminReady:!!PropertiesService.getScriptProperties().getProperty('FAST_ADMIN_RECORD')};fail_('INVALID_ACTION','Use the application to access this service.');});
+ return respond_(function(){if(e&&e.parameter&&e.parameter.action==='health')return {service:'CSC D.I.N.I.G.',configured:!!PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'),backendVersion:'dinig-fresh-single-admin-v2',fastAdminReady:!!PropertiesService.getScriptProperties().getProperty('FAST_ADMIN_RECORD')};fail_('INVALID_ACTION','Use the application to access this service.');});
 }
 function doPost(e) {
- return respond_(function(){const raw=e&&e.postData&&e.postData.contents;if(!raw||raw.length>15*1024*1024)fail_('INVALID_REQUEST','The request is missing or too large.');let input;try{input=JSON.parse(raw);}catch(ignore){fail_('INVALID_REQUEST','The request could not be read.');}if(!input||typeof input!=='object'||Array.isArray(input))fail_('INVALID_REQUEST','Invalid request.');return execute_(input);});
+ return respond_(function(){const raw=e&&e.postData&&e.postData.contents;if(!raw||raw.length>256*1024)fail_('INVALID_REQUEST','The request is missing or too large.');let input;try{input=JSON.parse(raw);}catch(ignore){fail_('INVALID_REQUEST','The request could not be read.');}if(!input||typeof input!=='object'||Array.isArray(input))fail_('INVALID_REQUEST','Invalid request.');return execute_(input);});
 }
 function respond_(fn){let result;try{result={ok:true,data:fn()};}catch(error){result={ok:false,code:error.dinigCode||'INTERNAL',error:error.dinigCode?error.message:'The request could not be completed. Try again later.'};}return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);}
 function fail_(code,message){const error=new Error(message);error.dinigCode=code;throw error;}
@@ -60,7 +56,6 @@ function equal_(a,b){if(typeof a!=='string'||typeof b!=='string'||a.length!==b.l
 // Editor-only recovery; no public password recovery/reset action exists.
 function resetAdminPassword(){const props=PropertiesService.getScriptProperties(),password=props.getProperty('ADMIN_PASSWORD')||'';locked_(function(){const db=store_(),admin=rows_(db,'Staff').find(s=>s.email==='aupcscdinig@aup.edu.ph'&&s.role==='administrator');if(!admin)throw Error('Run setup first.');put_(db,'Staff',Object.assign({},admin,passwordRecord_(password)));audit_(db,{staffId:admin.user_id},null,'owner_password_reset');commit_(db);});props.deleteProperty('ADMIN_PASSWORD');prepareFastAdminLogin();console.log('Administrator password reset. Existing administrator sessions are invalidated.');}
 function locked_(fn){const lock=LockService.getScriptLock();if(!lock.tryLock(15000))fail_('BUSY','The service is busy. Try again shortly.');try{return fn();}finally{lock.releaseLock();}}
-function assertPrivate_(file){if(file.getSharingAccess()!==DriveApp.Access.PRIVATE||file.getEditors().length||file.getViewers().length)throw Error('The database and attachment folder must remain Restricted with no additional editors or viewers. Assign staff through the application instead.');}
 
 // JSON is stored through stringValue, never as a Sheets formula. Per-row JSON
 // is split into bounded cells; Sheets batchUpdate commits all entities atomically.
@@ -140,8 +135,7 @@ function dispatch_(db,input){
  if(path==='/staff/login')fail_('INVALID_ACTION','Use the administrator login.');
  if(path==='/student/logout'||path==='/staff/logout'){const token=path==='/staff/logout'?input.staffToken:input.studentToken;if(typeof token==='string'){if(path==='/staff/logout')CacheService.getScriptCache().remove('fast-admin-session:'+hash_(token));remove_(db,'Sessions',hash_(token));}return {ok:true};}
  const staffPath=path.indexOf('/staff/')===0,actor=requireSession_(db,input,staffPath?'staff':'student');
- const fileMatch=path.match(/^\/(student|staff)\/attachments\/([a-f\d-]+)$/i);
- if(fileMatch){const file=get_(db,'Attachments',fileMatch[2]);if(!file)fail_('NOT_FOUND','Attachment not found.');report_(db,actor,file.report_id);const blob=DriveApp.getFileById(file.drive_id).getBlob();if(actor.staffId)audit_(db,actor,file.report_id,'download_attachment');return {name:file.name,mime:file.mime,data:Utilities.base64Encode(blob.getBytes())};}
+
  if(path==='/student/report')return detail_(db,actor,actor.reportId);
  if(path==='/student/message'){limit_(db,'message:'+hash_(input.studentToken),20,900000);return message_(db,actor,actor.reportId,body);}
  if(path==='/student/action'){limit_(db,'feedback:'+hash_(input.studentToken),10,900000);return feedback_(db,actor,body);}
@@ -156,12 +150,6 @@ function dispatch_(db,input){
 function pick_(record,keys){const output={};keys.forEach(key=>output[key]=record[key]);return output;}
 
 
-function validateFiles_(items){
- if(items===undefined)return [];
- if(!Array.isArray(items)||items.length>3)fail_('VALIDATION','Attach up to three files.');let total=0;
- return items.map(file=>{const name=text_(file.name,'File name',1,120).replace(/[\x00-\x1f\x7f/\\]/g,'_');if(typeof file.data!=='string'||file.data.length>6990512||! /^[A-Za-z0-9+/]*={0,2}$/.test(file.data))fail_('VALIDATION','Invalid attachment.');let bytes;try{bytes=Utilities.base64Decode(file.data);}catch(ignore){fail_('VALIDATION','Invalid attachment.');}total+=bytes.length;if(!bytes.length||bytes.length>5242880||total>10485760)fail_('VALIDATION','Each file must be at most 5 MB; combined files at most 10 MB.');const b=bytes.map(n=>(n+256)%256),ext=name.split('.').pop().toLowerCase();let mime;if([137,80,78,71,13,10,26,10].every((v,i)=>b[i]===v))mime='image/png';else if(b[0]===255&&b[1]===216&&b[2]===255)mime='image/jpeg';else if(String.fromCharCode.apply(null,b.slice(0,5))==='%PDF-')mime='application/pdf';if(!mime||({'image/png':['png'],'image/jpeg':['jpg','jpeg'],'application/pdf':['pdf']}[mime].indexOf(ext)<0))fail_('VALIDATION','Only matching PNG, JPEG or PDF files are supported.');return {name:name,mime:mime,bytes:bytes,size:bytes.length};});
-}
-function saveFiles_(db,reportId,files,messageId){if(!files.length)return;const folder=DriveApp.getFolderById(PropertiesService.getScriptProperties().getProperty('ATTACHMENT_FOLDER_ID'));assertPrivate_(folder);files.forEach(item=>{const file=folder.createFile(Utilities.newBlob(item.bytes,item.mime,item.name));assertPrivate_(file);add_(db,'Attachments',{report_id:reportId,message_id:messageId||null,name:item.name,mime:item.mime,size:item.size,drive_id:file.getId()});});}
 function submit_(db,body){
  const codeName=text_(body.codeName,'Code name',1,80),category=text_(body.category,'Category',1,80),subject=text_(body.subject,'Subject',1,180),details=text_(body.details,'Concern details',1,12000),requested=text_(body.requestedAction||'','Requested outcome',0,2000);
  if(DINIG_CATEGORIES.indexOf(category)<0||body.privacy!==true||!uuid_(body.submissionKey)||body.website)fail_('VALIDATION','Review the category and privacy acknowledgment.');
@@ -180,10 +168,10 @@ function submit_(db,body){
 }
 function detail_(db,actor,id){
  const report=report_(db,actor,id),staff=!!actor.staffId;
- const output={report:staff?clean_(report):pick_(report,['id','reference','code_name','category','subject','details','incident_date','location','requested_action','status','resolution','review_requested','created_at','updated_at']),messages:rows_(db,'Messages').filter(m=>m.report_id===id&&(staff||!m.internal)).map(m=>pick_(m,staff?['id','body','author_type','author_id','internal','created_at']:['id','body','author_type','created_at'])),history:rows_(db,'History').filter(h=>h.report_id===id&&(staff||h.student_visible)).map(h=>pick_(h,['previous_status','new_status','explanation','created_at','actor_type'])),attachments:rows_(db,'Attachments').filter(a=>a.report_id===id).map(a=>pick_(a,['id','name','mime','size','message_id','created_at'])),feedback:rows_(db,'Feedback').filter(f=>f.report_id===id).map(f=>pick_(f,['kind','body','created_at']))};
+ const output={report:staff?clean_(report):pick_(report,['id','reference','code_name','category','subject','details','incident_date','location','requested_action','status','resolution','review_requested','created_at','updated_at']),messages:rows_(db,'Messages').filter(m=>m.report_id===id&&(staff||!m.internal)).map(m=>pick_(m,staff?['id','body','author_type','author_id','internal','created_at']:['id','body','author_type','created_at'])),history:rows_(db,'History').filter(h=>h.report_id===id&&(staff||h.student_visible)).map(h=>pick_(h,['previous_status','new_status','explanation','created_at','actor_type'])),attachments:[],feedback:rows_(db,'Feedback').filter(f=>f.report_id===id).map(f=>pick_(f,['kind','body','created_at']))};
  if(staff){output.assignments=rows_(db,'Assignments').filter(a=>a.report_id===id).map(a=>({staff_id:a.staff_id,display_name:(get_(db,'Staff',a.staff_id)||{}).display_name||'Former handler'}));output.referrals=rows_(db,'Referrals').filter(r=>r.report_id===id).map(r=>Object.assign({},clean_(r),{office:(get_(db,'Offices',r.office_id)||{}).name||'Approved office'}));}return output;
 }
-function message_(db,actor,id,body){report_(db,actor,id);const content=text_(body.body,'Message',1,8000),internal=!!actor.staffId&&body.internal===true,files=validateFiles_(body.attachments);if(internal&&files.length)fail_('VALIDATION','Private notes cannot include student-accessible attachments.');const row=add_(db,'Messages',{report_id:id,author_id:actor.staffId||null,author_type:actor.staffId?'staff':'student',body:content,internal:internal});saveFiles_(db,id,files,row.id);if(actor.staffId)audit_(db,actor,id,internal?'internal_note':'staff_reply');return {ok:true};}
+function message_(db,actor,id,body){report_(db,actor,id);const content=text_(body.body,'Message',1,8000),internal=!!actor.staffId&&body.internal===true;if(body.attachments&&(!Array.isArray(body.attachments)||body.attachments.length))fail_('VALIDATION','File attachments are disabled.');const row=add_(db,'Messages',{report_id:id,author_id:actor.staffId||null,author_type:actor.staffId?'staff':'student',body:content,internal:internal});if(actor.staffId)audit_(db,actor,id,internal?'internal_note':'staff_reply');return {ok:true};}
 function history_(db,actor,r,status,reason){add_(db,'History',{report_id:r.id,previous_status:r.status,new_status:status,actor_id:actor.staffId||null,actor_type:actor.staffId?'staff':'student',explanation:reason,student_visible:true});r.status=status;r.updated_at=now_();put_(db,'Reports',r);}
 function feedback_(db,actor,body){const r=report_(db,actor,actor.reportId),kind=body.kind;if(['confirmed','feedback','review_request'].indexOf(kind)<0||['Resolved','Closed'].indexOf(r.status)<0)fail_('VALIDATION','Outcome responses are available after resolution.');const reason=text_(body.body||'','Feedback / reason',kind==='review_request'?10:0,2000);if(kind==='review_request'){
  if(r.review_requested)fail_('DUPLICATE','A further-review request is already pending.');

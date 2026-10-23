@@ -18,6 +18,7 @@ export function createHarness(options={}){
   for(const request of requests){const op=request.updateCells||request.appendDimension,id=op.range?.sheetId||op.sheetId,sheet=[...sheets.values()].find(s=>s.id===id),target=replacements.get(sheet.name);if(request.appendDimension){target.maxRows+=op.length;continue;}for(let index=0;index<op.rows.length;index++){const row=op.range.startRowIndex+index;while(target.values.length<=row)target.values.push([]);target.values[row]=op.rows[index].values.map(cell=>cell.userEnteredValue.stringValue);}}
   for(const[name,value]of replacements)Object.assign(sheets.get(name),value);
  }}}};
+ if(options.noDrive)context.DriveApp=undefined;
  vm.createContext(context);if(options.crypto!==false)vm.runInContext(fs.readFileSync(new URL('../google-apps-script/Crypto.gs',import.meta.url),'utf8'),context);vm.runInContext(fs.readFileSync(new URL('../google-apps-script/'+(options.source||'Code.gs'),import.meta.url),'utf8'),context);
  context.setup();
  function rows(name){return (sheets.get(name)?.values.slice(1)||[]).filter(r=>r[0]).map(r=>JSON.parse(r[1])).filter(r=>!r._deleted);}

@@ -12,35 +12,33 @@ The initial administrator email is **aupcscdinig@aup.edu.ph**. Its D.I.N.I.G. pa
 
 ## Finish setup
 
-Follow [google-apps-script/SETUP.md](google-apps-script/SETUP.md):
+For the new single-admin installation, follow [google-apps-script/FRESH-SETUP.md](google-apps-script/FRESH-SETUP.md). The older migration-compatible source remains documented in SETUP.md.
 
-1. Create an Apps Script project while signed in as the approved database owner. Paste `Code.gs`, `Crypto.gs` and the supplied manifest.
-2. Set private Script properties `TOKEN_SECRET` and a strong initial `ADMIN_PASSWORD`. A random secret has been prepared in the ignored local `google-apps-script/.setup-secrets.txt`; it must not be committed or pasted into chat.
-3. Run `setup`. It creates the private Sheet, database tabs and attachment folder, stores the administrator's salted password hash, and removes the plaintext initial password property.
-4. Deploy as a web app, execute as Me, accessible to Anyone. Send the public URL ending in `/exec` to the coding agent. No password, secret code or database credential needs to be sent in chat.
-5. Configure that public URL in `public/backend-config.js`, run `npm run build`, commit and push. GitHub Pages publishes **main → /docs**. Only the HTML bundle is published; Apps Script source and backend setup secrets are excluded.
-
-If your university blocks anonymous Apps Script deployments, its administrator must approve the deployment. Never make the Sheet or Drive folder public to work around a policy restriction.
+1. Create a new private Google Sheet, open Extensions → Apps Script, and replace Code.gs with FreshStart.gs. No Crypto.gs is needed.
+2. Enable the advanced Sheets v4 service and set ADMIN_PASSWORD privately in Script properties.
+3. Run setup. It initializes the Sheet, creates the admin hash, prepares cached login and removes the plaintext password property. No Drive folder is created.
+4. Deploy execute as Me, accessible to Anyone. Keep the Sheet Restricted.
+5. Configure the public /exec URL in public/backend-config.js, run npm run build, commit and push. GitHub Pages publishes main → /docs.
 
 ## Included workflows
 
 - Account-free submission, review, duplicate-submit guard, one-time private-code display, copy/download, and unique public reference numbers.
-- Private-code tracking, original concern, status timeline, authorized downloads, student/staff messages, corrections as follow-ups, feedback and independent further review.
-- Staff login against the private Sheet, staff permissions, assigned/unassigned/overdue/review queues, search/filters, category/priority updates, assignment, restricted/conflicted handling, private notes, approved-office referrals, follow-up outcomes, resolution and closure.
-- Administrator-only staff account creation/update. No public signup. Disabling an account or changing its password revokes access on subsequent requests. Owner-side password reset is available only through the Apps Script editor.
-- Private reports have no public listing. No report content or attachments are automatically forwarded or emailed externally.
+- Private-code tracking, original concern, status timeline, student/staff messages, corrections as follow-ups, feedback and independent further review.
+- Fast single-admin login against a server-only Script-properties verifier, staff permissions, assigned/unassigned/overdue/review queues, search/filters, category/priority updates, assignment, restricted/conflicted handling, private notes, approved-office referrals, follow-up outcomes, resolution and closure.
+- The fresh installation uses one administrator and rejects additional staff creation. No public signup. Disabling an account or changing its password revokes access on subsequent requests. Owner-side password reset is available only through the Apps Script editor.
+- Private reports have no public listing. No report content is automatically forwarded or emailed externally.
 
 ## Security model and limitations
 
-Every report and file operation checks its report-scoped session or authorized staff membership in Apps Script. Sensitive cases require an explicit assignment and reviewer permission; involved staff are excluded. The Sheet and Drive folder must remain Restricted and owner-only because Sheets does not provide database row-level policies.
+Every report operation checks its report-scoped session or authorized staff membership in Apps Script. Sensitive cases require an explicit assignment and reviewer permission; involved staff are excluded. The Sheet must remain Restricted and owner-only because Sheets does not provide database row-level policies.
 
 At the owner’s request for faster Apps Script sign-in, staff passwords use **salted, server-keyed HMAC-SHA256**. This is a fast verifier, not an adaptive password hash. The key stays in Script properties, separate from the Sheet. If both the key and Sheet are compromised, guesses are much cheaper than with PBKDF2. Existing PBKDF2 accounts migrate only after a successful password check; their first login remains slow. Keep the bundled crypto library for unmigrated accounts. Plaintext passwords are neither stored nor logged. Tracking and session secrets are HMAC-derived using a separately generated 256-bit server secret and unique nonces; only hashes are stored. Reference numbers and nicknames cannot authenticate a student.
 
 The user approved replacing the original HttpOnly-cookie design with **memory-only bearer sessions**. Tokens are held only in JavaScript memory, expire after 30 minutes idle/eight hours absolutely, and disappear on reload. Students re-enter their tracking code; staff sign in again. Tokens/codes do not enter URLs, localStorage, sessionStorage, analytics or application logs. This is a deliberate platform tradeoff, not cookie-based authentication.
 
-Private reads/downloads use POST with browser credentials omitted. User content is rendered as escaped text and written through Sheets `stringValue` JSON records to prevent formulas. Related records are committed using one Sheets batch update under a script lock. Private attachments are returned only after report authorization, never through public Drive URLs.
+Private reads use POST with browser credentials omitted. User content is rendered as escaped text and written through Sheets `stringValue` JSON records to prevent formulas. Related records are committed using one Sheets batch update under a script lock. File attachments and their download endpoints are disabled.
 
-Uploads are limited to matching PNG/JPEG/PDF signatures/extensions, three files, 5 MB each and 10 MB combined. Signature checking is not malware scanning. Apps Script provides no trustworthy requester IP here; anonymous limits are global, and service quotas/lock contention can limit availability. Benchmark real deployment performance, particularly password hashing, before launch. See SETUP.md for quota, retention and orphan-file maintenance details.
+No file uploads or Drive access are used. The Sheets v4 dependency is for atomic record writes. Apps Script service quotas and lock contention still apply. Existing files are not automatically deleted.
 
 The Google/Workspace operators remain trusted. These checks do not constitute a production security certification.
 

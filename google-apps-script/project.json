@@ -1,10 +1,15 @@
 {
-  "scriptId": "1EMimtH76pRx1UM-B5XfHb85AWu0jle1Bj71uigK053RCIE2v0uouv1n4",
-  "editorUrl": "https://script.google.com/home/projects/1EMimtH76pRx1UM-B5XfHb85AWu0jle1Bj71uigK053RCIE2v0uouv1n4/edit",
-  "ownerAccount": "centralstudentcouncil2026@gmail.com",
+  "scriptId": null,
+  "editorUrl": null,
+  "ownerAccount": null,
   "administratorLogin": "aupcscdinig@aup.edu.ph",
-  "deploymentUrl": "https://script.google.com/macros/s/AKfycbw9ARLiYVdEsffr8Kwr2Xkfi7z2G4-OVoaO5w_lTis3SooQxK9Q7GAv4pEVxqUH86OIlw/exec",
-  "status": "User-supplied deployment verified: health configured and anonymous session successful. Staff login and report workflow require live acceptance testing.",
-  "pendingBackendUpdate": "TRACE-style cached single-admin login and simplified concern submission schema; owner must update existing Apps Script deployment.",
-  "freshDatabasePlan": "Owner creating a new Sheet-bound project with FreshStart.gs; awaiting new /exec URL. Existing database and endpoint remain unchanged."
+  "deploymentUrl": "https://script.google.com/macros/s/AKfycbwqV3YWz20KrAa_BmjG7zLDK4xi-n5VfIsC3BkNO-oPJqwUIcbV8hI9P7-ggD8y-79W/exec",
+  "status": "New user deployment verified: fresh-single-admin-v1, configured:true, fastAdminReady:true, anonymous session successful.",
+  "pendingBackendUpdate": "Attachment-free backend source v2 awaits owner deployment; frontend file controls removed.",
+  "freshDatabasePlan": "New deployment connected. Existing database has not been deleted.",
+  "previousDeployment": {
+    "scriptId": "1EMimtH76pRx1UM-B5XfHb85AWu0jle1Bj71uigK053RCIE2v0uouv1n4",
+    "editorUrl": "https://script.google.com/home/projects/1EMimtH76pRx1UM-B5XfHb85AWu0jle1Bj71uigK053RCIE2v0uouv1n4/edit",
+    "deploymentUrl": "https://script.google.com/macros/s/AKfycbw9ARLiYVdEsffr8Kwr2Xkfi7z2G4-OVoaO5w_lTis3SooQxK9Q7GAv4pEVxqUH86OIlw/exec"
+  }
 }

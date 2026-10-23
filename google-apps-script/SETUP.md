@@ -94,3 +94,7 @@ Check /exec?action=health: backendVersion should be trace-style-login-v1; fastAd
 ## Simplified concern form
 
 The student form opens locally without a session/routing request. New concerns accept code name, category, subject, details, requested outcome and the privacy acknowledgment. The retired incident date, location, involved-staff and student-sensitive flags are not used by the submission backend; initial uploads are rejected. Category-level administrator routing and access rules still apply. Existing report data and authorized follow-up attachments are preserved. Deploy the updated Code.gs to enforce the new submission schema server-side. The simplified frontend works with the older backend as it sends only the retained fields.
+
+## Attachments removed
+
+Current sources remove all upload/download handlers, attachment-folder creation, and Drive OAuth scopes. Keep the database Sheet Restricted. The advanced Sheets v4 service remains necessary for atomic record writes; it is not a file-storage service. Old private files and folders are not automatically deleted. For the current fresh single-admin setup use FRESH-SETUP.md.
