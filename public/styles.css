@@ -4,3 +4,50 @@
 @media(max-width:760px){main{padding:22px 16px 36px}.hero{padding:32px 24px}.home-grid{grid-template-columns:1fr;gap:12px}.home-grid .panel{display:grid;grid-template-columns:30px 1fr;column-gap:16px;padding:20px}.home-grid .panel p{grid-column:2;font-size:13px;margin:0}.home-grid .panel h3{align-self:center}.home-grid .step-number{margin:0}.panel{padding:22px}.report-layout{grid-template-columns:1fr}.report-top{align-items:flex-start}.report-top .actions{justify-content:flex-end}.report-top h1{font-size:25px}.filters{grid-template-columns:1fr 1fr}.settings-grid{grid-template-columns:1fr}.review-list{grid-template-columns:1fr;gap:5px}.review-list dd{margin-bottom:12px}.csc-site-header .csc-header-brand small{display:block;font-size:7px;max-width:210px}.csc-header-actions a{font-size:10px;padding:4px}.csc-header-actions a:first-child{display:none}footer{width:calc(100% - 32px);flex-direction:column;gap:5px}.compact{margin:12px auto}.form-grid{gap:20px}.page-intro h1{font-size:30px}}
 @media(max-width:480px){.form-grid{grid-template-columns:1fr}.full{grid-column:auto}.hero h1{font-size:35px}.hero .meaning{font-size:14px}.actions .button{flex:1}.report-top{flex-wrap:wrap}.report-top .actions{width:100%;justify-content:flex-start}.report-row{grid-template-columns:1fr}.filters{gap:12px}.filters input,.filters select{font-size:13px;padding:10px}.panel{padding:20px}.message-head{flex-direction:column;gap:4px}.csc-site-header .csc-header-brand small{font-size:6.5px;max-width:none}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+/* Staff login shares the CSC campus photography and softly shaded account card. */
+body:has(.dinig-login){background:linear-gradient(110deg,#081833c9,#08183366),url('/assets/login-campus.jpg') center/cover fixed}
+body:has(.dinig-login)>.csc-site-header,body:has(.dinig-login)>footer{display:none}
+main:has(.dinig-login){width:100%;max-width:none;margin:0;padding:0}
+.dinig-login{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,480px);align-items:center;gap:clamp(32px,5vw,90px);min-height:100svh;padding:32px clamp(32px,5vw,72px)}
+.dinig-login-story{color:#fff;max-width:650px}
+.dinig-login-back{display:inline-flex;align-items:center;gap:12px;min-height:46px;padding:12px 16px;margin-bottom:18px;border:1px solid #eadcaa;border-radius:10px;background:#fff2bc;color:#0c1665;font-size:14px;font-weight:700;text-decoration:none}
+.dinig-login-back span{font-size:22px;line-height:1}
+.dinig-login-story>.eyebrow{color:#ffe08b;line-height:1.6;letter-spacing:1.4px}
+.dinig-login-story h1{font-size:clamp(36px,4.5vw,62px);font-weight:750;line-height:1.12;margin:24px 0;letter-spacing:-1.8px}
+.dinig-login-story p{max-width:490px;color:#e1e7f4;font-size:16px;line-height:1.75;margin:0 0 18px}
+.dinig-login-story .dinig-login-meaning{font-weight:500}
+.dinig-login-torch{display:block;object-fit:contain;margin:24px 0}
+.dinig-login-scroll{display:none}
+.dinig-login-form-row{min-width:0;width:100%;display:flex;justify-content:center}
+.dinig-login-card{position:relative;isolation:isolate;display:flex;flex-direction:column;justify-content:center;width:100%;max-width:480px;min-height:560px;height:min(640px,calc(100svh - 64px));padding:32px;border:1px solid #e2e7ee;border-radius:16px;background:radial-gradient(ellipse at 100% 0%,#edf2ff 0%,transparent 48%),radial-gradient(ellipse at 0% 100%,#fff5d8 0%,transparent 42%),linear-gradient(145deg,#fff 35%,#f8faff 100%);box-shadow:0 18px 55px #07152c2b,inset 0 1px 0 #fff;color:#14234b;overflow:hidden}
+.dinig-login-card::before{content:'';position:absolute;z-index:-1;pointer-events:none;width:210px;height:210px;right:-125px;top:-120px;border:1px solid #0c166510;border-radius:50%;box-shadow:0 0 0 30px #0c166504,0 0 0 60px #0c166503}
+.dinig-login-heading{padding-bottom:24px;margin-bottom:24px;border-bottom:1px solid #dce3ef}
+.dinig-login-heading .eyebrow{color:#64748b;font-size:11px;letter-spacing:1.3px;line-height:1.5;margin-bottom:10px}
+.dinig-login-heading h2{font-size:34px;line-height:1.18;font-weight:700;margin:0 0 12px;letter-spacing:-1px}
+.dinig-login-heading p{color:#64748b;font-size:15px;line-height:1.5;margin:0}
+.dinig-login-form,.dinig-login-fields{display:grid;gap:22px}
+.dinig-login-password{display:grid;gap:8px}
+.dinig-login-card label{color:#14234b;line-height:1.5;font-size:14px;font-weight:600}
+.dinig-login-card input{min-height:52px;border:1px solid #dce3ef;border-radius:10px;background:#f8fafc;font-size:16px}
+.dinig-login-card input::placeholder{color:#8491a5;font-size:14px}
+.dinig-login-card .password-wrap button{top:6px;right:6px;min-height:40px;font-size:12px}
+.dinig-login-form>button{min-height:52px;background:#14234b}
+.dinig-login-form>button:hover:not(:disabled){background:#203866}
+.dinig-login-form .form-error{margin:0;overflow-wrap:anywhere}
+.dinig-login-form[aria-busy=true]>button::after{content:'';width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:dinig-login-spin .8s linear infinite}
+.dinig-login-footnote{border-top:1px solid #dce3ef;padding-top:16px;margin:20px 0 0;color:#64748b;font-size:12px;line-height:1.6}
+@keyframes dinig-login-spin{to{transform:rotate(360deg)}}
+@media(min-width:901px) and (max-height:700px){.dinig-login{padding-block:16px}.dinig-login-card{height:auto;min-height:calc(100svh - 32px);padding:24px 32px}.dinig-login-story h1{font-size:38px;margin:16px 0}.dinig-login-torch{height:72px;width:auto;margin:16px 0}}
+@media(max-width:900px){
+ .dinig-login{display:block;padding:0;min-height:0}
+ .dinig-login-story,.dinig-login-form-row{background:linear-gradient(110deg,#081833c9,#08183366),url('/assets/login-campus.jpg') center/cover}
+ .dinig-login-story{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;max-width:none;min-height:100svh;padding:32px 24px}
+ .dinig-login-story h1{font-size:clamp(36px,7.4vw,46px);margin:20px 0}
+ .dinig-login-story p{font-size:14px;max-width:480px}
+ .dinig-login-story .dinig-login-tagline{font-size:10px}
+ .dinig-login-scroll{display:inline-flex;gap:12px;color:#fff;font-size:13px;text-underline-offset:5px;margin-top:24px}
+ .dinig-login-form-row{min-height:100svh;align-items:center;padding:24px 16px}
+ .dinig-login-card{height:auto;min-height:640px;padding:24px}
+}
+@media(prefers-reduced-motion:reduce){.dinig-login-form[aria-busy=true]>button::after{animation:none}}
