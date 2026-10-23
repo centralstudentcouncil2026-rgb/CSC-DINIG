@@ -148,3 +148,5 @@ main:has(.dinig-login){width:100%;max-width:none;margin:0;padding:0}
  .dinig-login-card{height:auto;min-height:640px;padding:24px}
 }
 @media(prefers-reduced-motion:reduce){.dinig-login-form[aria-busy=true]>button::after{animation:none}}
+
+.desk-status{display:flex;align-items:center;justify-content:center;gap:12px;min-height:104px;padding:20px;flex-wrap:wrap}.desk-status p{margin:0;color:var(--muted);font-size:14px}.desk-status .form-error{color:#a52525}.desk-spinner{width:18px;height:18px;flex-shrink:0;border:2px solid var(--border);border-top-color:var(--navy);border-radius:50%;animation:desk-spin .8s linear infinite}@keyframes desk-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.desk-spinner{animation:none}}
