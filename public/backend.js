@@ -3,6 +3,8 @@ let studentToken='',staffToken='';
 const categories=['Academic','Facilities','Student Services','Safety and Welfare','Organizations','Ideas and Suggestions','Others'];
 const statuses=['Submitted','Under Review','Awaiting Student Response','In Progress','Referred','Resolved','Closed'];
 export const isConfigured=()=>/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(backendUrl);
+export const hasSession=()=>Boolean(studentToken||staffToken);
+export const guestContext=()=>({csrf:'',student:false,staff:null,categories:[...categories],statuses:[...statuses],routingStaff:[],emergencyGuidance:'',responseGuidance:''});
 export async function request(path,body){
  if(!isConfigured()){
   if(path==='/session')return {csrf:'',student:false,staff:null,categories,statuses,routingStaff:[],emergencyGuidance:'',responseGuidance:''};

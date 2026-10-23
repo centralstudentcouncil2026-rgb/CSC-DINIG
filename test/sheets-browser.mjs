@@ -24,5 +24,16 @@ try{
   await page.reload();await page.getByRole('heading',{name:'Welcome back.'}).waitFor();assert.equal(await page.locator('[data-dashboard-back]:visible').getAttribute('href'),'https://centralstudentcouncil2026-rgb.github.io/CSC-SYNC-Admin/csc-officers.html');
   await page.goto(origin+prefix+'/?csc_portal=cole');await page.getByRole('heading',{name:'CSC – D.I.N.I.G.'}).waitFor();assert.equal(await page.locator('[data-dashboard-back]:visible').getAttribute('href'),'https://centralstudentcouncil2026-rgb.github.io/CSC-SYNC-Org/cole.html');assert.deepEqual(errors,[]);await context.close();console.log(`PASS ${viewport.width}×${viewport.height}: static routes, submission, private tracking, reload reauthentication, staff login, private notes, storage and dashboard returns.`);
  }
+ for(const [entry,heading] of [['/','CSC – D.I.N.I.G.'],['/staff/','Welcome back.'],['/#/track','Track my concern']]){
+  const context=await browser.newContext(),page=await context.newPage();
+  let release;const pending=new Promise(resolve=>release=resolve);let requests=0;
+  await page.route('**/backend-config.js',route=>route.fulfill({contentType:'text/javascript',body:"export const backendUrl='https://script.google.com/macros/s/slow-test/exec';"}));
+  await page.route('https://script.google.com/macros/s/slow-test/exec',async route=>{requests++;await pending;await route.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,data:{student:false,staff:null,emergencyGuidance:'Approved guidance',responseGuidance:''}})});});
+  await page.goto(origin+prefix+entry);await page.getByRole('heading',{name:heading,exact:true}).waitFor({timeout:3000});
+  assert.equal(await page.getByText('Opening D.I.N.I.G.…',{exact:true}).count(),0);
+  if(entry!=='/')assert.equal(requests,0);
+  release();if(entry==='/')await page.getByText('Approved guidance',{exact:true}).waitFor();
+  await context.close();console.log('PASS immediate guest screen with pending backend: '+entry);
+ }
  const context=await browser.newContext(),page=await context.newPage();await page.route('**/backend-config.js',route=>route.fulfill({contentType:'text/javascript',body:"export const backendUrl='';"}));await page.goto(origin+prefix+'/');await page.getByRole('link',{name:'Submit a Concern'}).click();await page.getByRole('heading',{name:'We’re preparing to listen.'}).waitFor();assert.equal(await page.locator('form').count(),0);await context.close();console.log('PASS unconfigured deployment collects no concerns or credentials.');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

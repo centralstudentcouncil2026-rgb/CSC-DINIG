@@ -1,4 +1,4 @@
-import {request as api,downloadAttachment,isConfigured} from './backend.js';
+import {request as api,downloadAttachment,isConfigured,hasSession,guestContext} from './backend.js';
 const main=document.querySelector('#main');
 const appRoute=()=>location.hash.startsWith('#/')?location.hash.slice(1):(document.body.dataset.entry==='staff'?'/staff':'/');
 const currentPath=()=>appRoute().split('?')[0];
@@ -25,7 +25,25 @@ document.addEventListener('click',event=>{const file=event.target.closest('[data
 window.addEventListener('popstate',()=>{unsavedCode=false;render();});
 window.addEventListener('beforeunload',event=>{if(unsavedCode){event.preventDefault();event.returnValue='';}});
 async function render(){
- try{state=await api('/session');csrf=state.csrf;document.title='CSC D.I.N.I.G.';
+ try{document.title='CSC D.I.N.I.G.';
+  // Memory-only tokens cannot survive reload. Public screens need no remote
+  // authentication check before they can appear or accept input.
+  if(!hasSession()&&currentPath()!=='/submit'){
+   state=guestContext();csrf='';
+   if(isConfigured()&&currentPath()==='/staff'){login();return;}
+   if(isConfigured()&&currentPath()==='/track'){tracking();return;}
+   if(currentPath()==='/'){
+    home();
+    if(isConfigured())api('/session').then(context=>{
+     if(currentPath()!=='/'||hasSession())return;
+     state=context;
+     const guidance=main.querySelector('[data-council-guidance]');
+     if(guidance)guidance.innerHTML=`${state.emergencyGuidance?`<p>${esc(state.emergencyGuidance)}</p>`:''}${state.responseGuidance?`<p>${esc(state.responseGuidance)}</p>`:''}`;
+    }).catch(()=>{if(currentPath()==='/')notice('Council guidance could not be refreshed. Please check your connection.');});
+    return;
+   }
+  }
+  state=await api('/session');csrf=state.csrf;
   if(!isConfigured()&&currentPath()!=='/'){main.innerHTML='<section class="compact panel"><h1>We’re preparing to listen.</h1><p class="muted">The council is connecting this service. Concern submission and staff login will open after setup is complete.</p><a class="button" href="#/">Return home</a></section>';return;}
   if(currentPath()==='/submit')submission();
   else if(currentPath()==='/track'){if(state.student)await studentReport();else tracking();}
@@ -35,7 +53,7 @@ async function render(){
 }
 function home(){main.innerHTML=`<section class="hero"><div class="eyebrow">The Central Student Council · Listening with purpose</div><h1>CSC – D.I.N.I.G.</h1><p class="meaning">Discuss Issues, Needs, Ideas, and Grievances</p><p>A space for your voice. A channel for action.</p><div class="actions"><a class="button gold" href="#/submit">Submit a Concern <span aria-hidden="true">↗</span></a><a class="button secondary" href="#/track">Track My Concern</a></div></section>
  <section class="home-grid" aria-label="How it works"><article class="panel"><span class="step-number">01</span><h3>Tell us what matters.</h3><p class="muted">Choose a code name and share your concern. No student account is needed.</p></article><article class="panel"><span class="step-number">02</span><h3>Keep your private code.</h3><p class="muted">Save the unique tracking code for your report. It is your key to following up.</p></article><article class="panel"><span class="step-number">03</span><h3>Follow the conversation.</h3><p class="muted">Read updates, respond to your handler, and review the outcome in one place.</p></article></section>
- <aside class="privacy-note"><p><strong>Private, with care.</strong> Only authorized handlers can access submitted concerns. What you write and attach may still reveal your identity. Anyone holding your tracking code can access your report.</p><p>This service is not continuously monitored for emergencies.${state.emergencyGuidance?' '+esc(state.emergencyGuidance):''}</p>${state.responseGuidance?`<p>${esc(state.responseGuidance)}</p>`:''}</aside>`;}
+ <aside class="privacy-note"><p><strong>Private, with care.</strong> Only authorized handlers can access submitted concerns. What you write and attach may still reveal your identity. Anyone holding your tracking code can access your report.</p><p>This service is not continuously monitored for emergencies.</p><div data-council-guidance>${state.emergencyGuidance?`<p>${esc(state.emergencyGuidance)}</p>`:''}${state.responseGuidance?`<p>${esc(state.responseGuidance)}</p>`:''}</div></aside>`;}
 function submission(){main.innerHTML=`<div class="narrow"><div class="page-intro"><div class="eyebrow">Your voice matters · Step 1 of 2</div><h1>Submit a concern</h1><p>Share the details you feel comfortable providing. Review everything before sending.</p></div><form id="concern" class="panel"><div class="section-label"><h2>What would you like us to know?</h2><span class="hint">Fields marked * are required. Code names do not need to be unique.</span></div><div class="form-grid">
  ${field('codeName','Code name *',80,true,'text',draft.codeName)}${label('Category *',select('category',state.categories,draft.category))}
  <div class="full">${field('subject','Subject *',180,true,'text',draft.subject)}</div><div class="full">${area('details','Concern details *',12000,true,draft.details)}</div>
