@@ -10,6 +10,11 @@ test('Sheet setup stores PBKDF2 hashes and removes the initial plaintext propert
  const staff=h.rows('Staff')[0];assert.equal(staff.password_iterations,600000);assert.equal(staff.password_hash,crypto.pbkdf2Sync('Test-only initial password 2026!',staff.password_salt,600000,32,'sha256').toString('hex'));assert.equal(h.props.has('ADMIN_PASSWORD'),false);assert(!JSON.stringify(h.rows('Staff')).includes('Test-only initial password'));
  assert.equal(h.request('/staff/login',{email:'not-authorized@example.invalid',password:'bad-password'}).code,'UNAUTHORIZED');
  assert(!JSON.stringify(h.request('/staff/options',{},admin)).includes('password_hash'));
+ const originalHash=staff.password_hash;
+ h.context.setup();
+ assert.equal(h.rows('Staff').length,1);
+ assert.equal(h.rows('Staff')[0].password_hash,originalHash);
+ assert.equal(h.rows('Routing').length,7);
 });
 test('anonymous submission allows duplicate nicknames and stores one-way tracking hashes',()=>{
  const body=concern();first=h.request('/reports',body);second=h.request('/reports',concern());assert(first.ok);assert(second.ok);assert.match(first.data.trackingCode,/^[\w-]{43}$/);assert.notEqual(first.data.trackingCode,second.data.trackingCode);assert.equal(h.request('/reports',body).code,'DUPLICATE');

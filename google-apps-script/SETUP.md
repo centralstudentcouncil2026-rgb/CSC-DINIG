@@ -29,6 +29,8 @@ Optional properties are `EMERGENCY_GUIDANCE`, `RESPONSE_GUIDANCE`, and `RETENTIO
 
 ## 3. Run setup
 
+Confirm **Services** lists **Google Sheets API** (identifier `Sheets`, version v4). If missing, use Services → + to add it. Setup flushes new tabs and headers before using this advanced API, then runs a read-only API check so missing service, API enablement, or permission errors appear directly in the owner execution log.
+
 Select `setup` in the Apps Script editor and click Run. Review the permission prompt and authorize this project. This is the owner-side step; students never authorize Drive or Sheets access.
 
 The function creates the private database tabs and attachment folder, seeds the administrator account, and prints **only the Sheet URL** to the execution log. It stores a salted PBKDF2-HMAC-SHA256 password hash with 600,000 iterations and removes `ADMIN_PASSWORD` from Script properties after success. It preserves existing accounts when rerun. Keep `TOKEN_SECRET` unchanged after launch.

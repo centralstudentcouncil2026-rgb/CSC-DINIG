@@ -13,11 +13,17 @@ function setup() {
  const props=PropertiesService.getScriptProperties();
  if(!/^[a-f\d]{64,}$/i.test(props.getProperty('TOKEN_SECRET')||''))throw Error('Set TOKEN_SECRET to a cryptographically generated 64-character hex secret. See SETUP.md.');
  if(typeof DinigCrypto==='undefined')throw Error('Add the supplied Crypto.gs file before running setup.');
+ if(typeof Sheets==='undefined')throw Error('Enable Google Sheets API v4 under Services (+), then run setup again.');
  const existing=props.getProperty('SPREADSHEET_ID');
  const spreadsheet=existing?SpreadsheetApp.openById(existing):SpreadsheetApp.create('CSC D.I.N.I.G. — Private Database');
  assertPrivate_(DriveApp.getFileById(spreadsheet.getId()));
  props.setProperty('SPREADSHEET_ID',spreadsheet.getId());
  DINIG_TABLES.forEach(name=>{const sheet=spreadsheet.getSheetByName(name)||spreadsheet.insertSheet(name);if(!sheet.getLastRow()){sheet.getRange(1,1,1,3).setValues([['id','record_json','updated_at']]);sheet.setFrozenRows(1);sheet.getRange(1,1,1,3).setFontWeight('bold').setBackground('#fff2bc');}else if(sheet.getRange(1,1,1,3).getValues()[0].join('|')!=='id|record_json|updated_at')throw Error('Unexpected table headers: '+name);});
+ // Finish SpreadsheetApp's buffered tab/header writes before the separate API.
+ SpreadsheetApp.flush();
+ // This read-only preflight exposes Google's service/permission error in the
+ // owner editor without logging a write payload containing account data.
+ Sheets.Spreadsheets.get(spreadsheet.getId(),{fields:'spreadsheetId'});
  let folder;
  if(props.getProperty('ATTACHMENT_FOLDER_ID'))folder=DriveApp.getFolderById(props.getProperty('ATTACHMENT_FOLDER_ID'));
  else{folder=DriveApp.createFolder('CSC D.I.N.I.G. — Private Attachments');props.setProperty('ATTACHMENT_FOLDER_ID',folder.getId());}
