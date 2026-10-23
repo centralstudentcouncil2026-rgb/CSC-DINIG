@@ -1,4 +1,4 @@
-import {backendUrl} from './backend-config.js?v=d12ce3b79405';
+import {backendUrl} from './backend-config.js?v=453b3c291e4a';
 let studentToken='',staffToken='';
 const categories=['Academic','Facilities','Student Services','Safety and Welfare','Organizations','Ideas and Suggestions','Others'];
 const statuses=['Submitted','Under Review','Awaiting Student Response','In Progress','Referred','Resolved','Closed'];

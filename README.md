@@ -68,3 +68,5 @@ Node is used only for local tooling, building, tests and optional preview. Stude
 - `scripts/build-static.js`: rebuilds static outputs with correct subdirectory asset paths.
 
 The earlier `server/`, `migrations/` and PostgreSQL tests are retained as **legacy reference only**. They are not used by the HTML/Sheets site. There is no need to configure or deploy them. Existing CSC S.Y.N.C., T.R.A.C.E. and L.I.V.E. authentication and repositories are unchanged.
+
+Current single-admin backend: `google-apps-script/FreshStart.gs` v3. All concerns go to the central administrator desk; assignment and routing are retired. Submission date/time is recorded automatically and shown in the admin list and detail. Existing Apps Script deployments must be updated to v3 to apply these backend rules.

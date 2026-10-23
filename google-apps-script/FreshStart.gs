@@ -28,7 +28,7 @@ function setup() {
  // owner editor without logging a write payload containing account data.
  Sheets.Spreadsheets.get(spreadsheet.getId(),{fields:'spreadsheetId'});
 
- locked_(function(){const db=store_();if(!rows_(db,'Staff').some(s=>s.email==='aupcscdinig@aup.edu.ph')){const password=props.getProperty('ADMIN_PASSWORD')||'';text_(password,'Initial administrator password',12,256);const adminId=Utilities.getUuid();put_(db,'Staff',Object.assign({id:adminId,user_id:adminId,public_id:Utilities.getUuid(),email:'aupcscdinig@aup.edu.ph',display_name:'D.I.N.I.G. Administrator',role:'administrator',enabled:true,sensitive_access:true,created_at:now_()},passwordRecord_(password)));}DINIG_CATEGORIES.forEach(category=>{if(!get_(db,'Routing',category))put_(db,'Routing',{id:category,category:category,restricted:false,reviewer_id:null,target_hours:null});});commit_(db);});
+ locked_(function(){const db=store_();if(!rows_(db,'Staff').some(s=>s.email==='aupcscdinig@aup.edu.ph')){const password=props.getProperty('ADMIN_PASSWORD')||'';text_(password,'Initial administrator password',12,256);const adminId=Utilities.getUuid();put_(db,'Staff',Object.assign({id:adminId,user_id:adminId,public_id:Utilities.getUuid(),email:'aupcscdinig@aup.edu.ph',display_name:'D.I.N.I.G. Administrator',role:'administrator',enabled:true,sensitive_access:true,created_at:now_()},passwordRecord_(password)));}commit_(db);});
  props.deleteProperty('ADMIN_PASSWORD');
  prepareFastAdminLogin();
  console.log('Setup complete. Private database: '+spreadsheet.getUrl());
@@ -36,7 +36,7 @@ function setup() {
 
 function doGet(e) {
  // No public report listing, credential lookup, file endpoint or staff directory.
- return respond_(function(){if(e&&e.parameter&&e.parameter.action==='health')return {service:'CSC D.I.N.I.G.',configured:!!PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'),backendVersion:'dinig-fresh-single-admin-v2',fastAdminReady:!!PropertiesService.getScriptProperties().getProperty('FAST_ADMIN_RECORD')};fail_('INVALID_ACTION','Use the application to access this service.');});
+ return respond_(function(){if(e&&e.parameter&&e.parameter.action==='health')return {service:'CSC D.I.N.I.G.',configured:!!PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'),backendVersion:'dinig-fresh-single-admin-v3',fastAdminReady:!!PropertiesService.getScriptProperties().getProperty('FAST_ADMIN_RECORD')};fail_('INVALID_ACTION','Use the application to access this service.');});
 }
 function doPost(e) {
  return respond_(function(){const raw=e&&e.postData&&e.postData.contents;if(!raw||raw.length>256*1024)fail_('INVALID_REQUEST','The request is missing or too large.');let input;try{input=JSON.parse(raw);}catch(ignore){fail_('INVALID_REQUEST','The request could not be read.');}if(!input||typeof input!=='object'||Array.isArray(input))fail_('INVALID_REQUEST','Invalid request.');return execute_(input);});
@@ -79,7 +79,7 @@ function limit_(db,key,max,windowMs){const slot=Math.floor(Date.now()/windowMs),
 function session_(db,token,kind){if(typeof token!=='string'||!/^[\w-]{43}$/.test(token))return null;if(kind==='staff'){const cached=cachedStaffSession_(db,token);if(cached)return cached;}const row=get_(db,'Sessions',hash_(token));if(!row||row.kind!==kind||row.expires_at<=Date.now()||row.touched_at<Date.now()-DINIG_IDLE)return null;if(kind==='staff'){const staff=get_(db,'Staff',row.staff_id);if(!staff||!staff.enabled||row.auth_version!==staff.auth_version)return null;row.profile=clean_(staff);}const profile=row.profile;delete row.profile;put_(db,'Sessions',Object.assign({},row,{touched_at:Date.now()}));return kind==='staff'?{staffId:row.staff_id,profile:profile}:{reportId:row.report_id};}
 function requireSession_(db,input,kind){const actor=session_(db,kind==='staff'?input.staffToken:input.studentToken,kind);if(!actor)fail_('UNAUTHORIZED',kind==='staff'?'Please sign in to staff access.':'Enter your private tracking code to continue.');return actor;}
 function newSession_(db,kind,actor){const value=token_('session:'+kind);put_(db,'Sessions',{id:hash_(value),kind:kind,staff_id:actor.staffId||null,auth_version:actor.staffId?get_(db,'Staff',actor.staffId).auth_version:null,report_id:actor.reportId||null,touched_at:Date.now(),expires_at:Date.now()+DINIG_ABSOLUTE});return value;}
-function allowed_(db,actor,report){if(!report)return false;if(actor.reportId)return actor.reportId===report.id;const s=actor.profile;if(!s||!s.enabled||(report.conflict_staff||[]).indexOf(actor.staffId)!==-1)return false;const assigned=rows_(db,'Assignments').some(a=>a.report_id===report.id&&a.staff_id===actor.staffId);return report.sensitive?(s.sensitive_access&&assigned&&['administrator','restricted_reviewer'].indexOf(s.role)!==-1):(s.role==='administrator'||assigned);}
+function allowed_(db,actor,report){if(!report)return false;if(actor.reportId)return actor.reportId===report.id;const s=actor.profile;return !!(s&&s.enabled&&s.role==='administrator');}
 function report_(db,actor,id){const report=get_(db,'Reports',id);if(!allowed_(db,actor,report))fail_('NOT_FOUND','Concern not found.');return report;}
 
 // TRACE-style single-admin credential snapshot. Only hashed credentials live
@@ -134,7 +134,7 @@ function dispatch_(db,input){
  }
  if(path==='/staff/login')fail_('INVALID_ACTION','Use the administrator login.');
  if(path==='/student/logout'||path==='/staff/logout'){const token=path==='/staff/logout'?input.staffToken:input.studentToken;if(typeof token==='string'){if(path==='/staff/logout')CacheService.getScriptCache().remove('fast-admin-session:'+hash_(token));remove_(db,'Sessions',hash_(token));}return {ok:true};}
- const staffPath=path.indexOf('/staff/')===0,actor=requireSession_(db,input,staffPath?'staff':'student');
+ const staffPath=path.indexOf('/staff/')===0,actor=requireSession_(db,input,staffPath?'staff':'student');if(staffPath&&actor.profile.role!=='administrator')fail_('FORBIDDEN','Administrator access is required.');
 
  if(path==='/student/report')return detail_(db,actor,actor.reportId);
  if(path==='/student/message'){limit_(db,'message:'+hash_(input.studentToken),20,900000);return message_(db,actor,actor.reportId,body);}
@@ -142,9 +142,9 @@ function dispatch_(db,input){
  const reportMatch=path.match(/^\/staff\/reports\/([a-f\d-]+)(?:\/(message|action))?$/i);
  if(reportMatch){if(reportMatch[2]==='message'){limit_(db,'message:'+actor.staffId,40,900000);return message_(db,actor,reportMatch[1],body);}if(reportMatch[2]==='action')return staffAction_(db,actor,reportMatch[1],body);const value=detail_(db,actor,reportMatch[1]);audit_(db,actor,reportMatch[1],'view_report');return value;}
  if(path.split('?')[0]==='/staff/reports')return list_(db,actor,path);
- if(path==='/staff/options')return {singleAdmin:true,staff:rows_(db,'Staff').map(s=>pick_(s,actor.profile.role==='administrator'?['user_id','email','display_name','role','sensitive_access','enabled']:['user_id','display_name','role','sensitive_access','enabled'])),offices:rows_(db,'Offices').filter(o=>o.enabled!==false).map(clean_),routing:actor.profile.role==='administrator'?rows_(db,'Routing').map(clean_):undefined,retentionDays:Number(PropertiesService.getScriptProperties().getProperty('RETENTION_DAYS')||365)};
+ if(path==='/staff/options')return {singleAdmin:true,centralized:true,staff:[],offices:[],routing:[]};
  if(path==='/staff/startup')return {options:dispatch_(db,{path:'/staff/options',staffToken:input.staffToken}),list:list_(db,actor,'/staff/reports?offset=0')};
- if(path==='/staff/settings')return settings_(db,actor,body);
+ if(path==='/staff/settings')fail_('FORBIDDEN','Access management and routing are disabled. All concerns go to the administrator.');
  fail_('INVALID_ACTION','Unknown action.');
 }
 function pick_(record,keys){const output={};keys.forEach(key=>output[key]=record[key]);return output;}
@@ -155,53 +155,33 @@ function submit_(db,body){
  if(DINIG_CATEGORIES.indexOf(category)<0||body.privacy!==true||!uuid_(body.submissionKey)||body.website)fail_('VALIDATION','Review the category and privacy acknowledgment.');
  if(body.attachments&&(!Array.isArray(body.attachments)||body.attachments.length))fail_('VALIDATION','Attachments are no longer accepted with new concerns.');
  if(get_(db,'SubmissionKeys',body.submissionKey))fail_('DUPLICATE','This concern was already submitted. Use its saved tracking code.');
- const rule=get_(db,'Routing',category),conflicts=[],sensitive=!!rule.restricted;
- let reviewer=rule.reviewer_id?get_(db,'Staff',rule.reviewer_id):null;if(reviewer&&!reviewer.enabled)reviewer=null;
- const independent=s=>s.enabled&&s.sensitive_access&&['administrator','restricted_reviewer'].indexOf(s.role)!==-1&&conflicts.indexOf(s.user_id)<0;
- if(sensitive&&(!reviewer||!independent(reviewer)))reviewer=rows_(db,'Staff').find(independent)||null;
- if(sensitive&&!reviewer)fail_('NOT_CONFIGURED','An independent restricted reviewer is not currently available. Please use an approved council contact.');
+ const conflicts=[],sensitive=false;
  const id=Utilities.getUuid(),code=token_('tracking'),reference='DINIG-'+new Date().getUTCFullYear()+'-'+hash_(Utilities.getUuid()).slice(0,12).toUpperCase();
  if(rows_(db,'Reports').some(r=>r.reference===reference))fail_('BUSY','Please retry this submission.');
- add_(db,'Reports',{id:id,reference:reference,code_name:codeName,category:category,subject:subject,details:details,incident_date:null,location:'',requested_action:requested,sensitive:sensitive,conflict_staff:conflicts,status:'Submitted',priority:'Normal',resolution:'',review_requested:false,due_at:rule.target_hours?new Date(Date.now()+rule.target_hours*3600000).toISOString():null,updated_at:now_()});
+ add_(db,'Reports',{id:id,reference:reference,code_name:codeName,category:category,subject:subject,details:details,incident_date:null,location:'',requested_action:requested,sensitive:sensitive,conflict_staff:conflicts,status:'Submitted',priority:'Normal',resolution:'',review_requested:false,due_at:null,updated_at:now_()});
  put_(db,'Credentials',{id:id,report_id:id,code_hash:hash_(code)});put_(db,'SubmissionKeys',{id:body.submissionKey,report_id:id});add_(db,'History',{report_id:id,previous_status:null,new_status:'Submitted',actor_type:'student',actor_id:null,explanation:'Your concern has been submitted.',student_visible:true});
- if(reviewer){add_(db,'Assignments',{report_id:id,staff_id:reviewer.user_id,assigned_by:null});add_(db,'Notifications',{report_id:id,staff_id:reviewer.user_id,kind:'new_report'});}return {reference:reference,trackingCode:code};
+ return {reference:reference,trackingCode:code};
 }
 function detail_(db,actor,id){
  const report=report_(db,actor,id),staff=!!actor.staffId;
  const output={report:staff?clean_(report):pick_(report,['id','reference','code_name','category','subject','details','incident_date','location','requested_action','status','resolution','review_requested','created_at','updated_at']),messages:rows_(db,'Messages').filter(m=>m.report_id===id&&(staff||!m.internal)).map(m=>pick_(m,staff?['id','body','author_type','author_id','internal','created_at']:['id','body','author_type','created_at'])),history:rows_(db,'History').filter(h=>h.report_id===id&&(staff||h.student_visible)).map(h=>pick_(h,['previous_status','new_status','explanation','created_at','actor_type'])),attachments:[],feedback:rows_(db,'Feedback').filter(f=>f.report_id===id).map(f=>pick_(f,['kind','body','created_at']))};
- if(staff){output.assignments=rows_(db,'Assignments').filter(a=>a.report_id===id).map(a=>({staff_id:a.staff_id,display_name:(get_(db,'Staff',a.staff_id)||{}).display_name||'Former handler'}));output.referrals=rows_(db,'Referrals').filter(r=>r.report_id===id).map(r=>Object.assign({},clean_(r),{office:(get_(db,'Offices',r.office_id)||{}).name||'Approved office'}));}return output;
+ if(staff){output.assignments=[];output.referrals=[];}return output;
 }
 function message_(db,actor,id,body){report_(db,actor,id);const content=text_(body.body,'Message',1,8000),internal=!!actor.staffId&&body.internal===true;if(body.attachments&&(!Array.isArray(body.attachments)||body.attachments.length))fail_('VALIDATION','File attachments are disabled.');const row=add_(db,'Messages',{report_id:id,author_id:actor.staffId||null,author_type:actor.staffId?'staff':'student',body:content,internal:internal});if(actor.staffId)audit_(db,actor,id,internal?'internal_note':'staff_reply');return {ok:true};}
 function history_(db,actor,r,status,reason){add_(db,'History',{report_id:r.id,previous_status:r.status,new_status:status,actor_id:actor.staffId||null,actor_type:actor.staffId?'staff':'student',explanation:reason,student_visible:true});r.status=status;r.updated_at=now_();put_(db,'Reports',r);}
 function feedback_(db,actor,body){const r=report_(db,actor,actor.reportId),kind=body.kind;if(['confirmed','feedback','review_request'].indexOf(kind)<0||['Resolved','Closed'].indexOf(r.status)<0)fail_('VALIDATION','Outcome responses are available after resolution.');const reason=text_(body.body||'','Feedback / reason',kind==='review_request'?10:0,2000);if(kind==='review_request'){
  if(r.review_requested)fail_('DUPLICATE','A further-review request is already pending.');
- const prior=rows_(db,'Assignments').filter(a=>a.report_id===r.id).map(a=>a.staff_id).concat(rows_(db,'Messages').filter(m=>m.report_id===r.id&&m.author_id).map(m=>m.author_id),rows_(db,'History').filter(h=>h.report_id===r.id&&h.actor_id).map(h=>h.actor_id));
- const reviewer=rows_(db,'Staff').find(s=>s.enabled&&s.sensitive_access&&['administrator','restricted_reviewer'].indexOf(s.role)!==-1&&(r.conflict_staff||[]).indexOf(s.user_id)<0&&prior.indexOf(s.user_id)<0);if(!reviewer)fail_('NOT_CONFIGURED','An independent reviewer is not currently configured. Please use an approved council contact.');
- add_(db,'Assignments',{report_id:r.id,staff_id:reviewer.user_id,assigned_by:null});add_(db,'Notifications',{report_id:r.id,staff_id:reviewer.user_id,kind:'further_review'});r.review_requested=true;r.updated_at=now_();put_(db,'Reports',r);
+ r.review_requested=true;r.updated_at=now_();put_(db,'Reports',r);
  }else if(kind==='confirmed'&&r.status==='Resolved')history_(db,actor,r,'Closed','The student confirmed resolution.');add_(db,'Feedback',{report_id:r.id,kind:kind,body:reason});return {ok:true};}
 
 function staffAction_(db,actor,id,body){
  const r=report_(db,actor,id),reason=text_(body.reason||'','Explanation',1,4000),admin=actor.profile.role==='administrator';
- if(r.review_requested&&['status','refer'].indexOf(body.action)!==-1){const review=rows_(db,'Notifications').some(n=>n.report_id===id&&n.staff_id===actor.staffId&&n.kind==='further_review');if(!review||!actor.profile.sensitive_access||['administrator','restricted_reviewer'].indexOf(actor.profile.role)<0)fail_('FORBIDDEN','This request must be handled by its independent reviewer.');}
  if(body.action==='status'){
  const transitions={Submitted:['Under Review','In Progress','Awaiting Student Response'],'Under Review':['In Progress','Awaiting Student Response','Resolved','Closed'],'Awaiting Student Response':['Under Review','In Progress','Resolved','Closed'],'In Progress':['Under Review','Awaiting Student Response','Resolved','Closed'],Referred:['Under Review','In Progress','Awaiting Student Response','Resolved','Closed'],Resolved:['Closed'].concat(r.review_requested?['Under Review']:[]),Closed:r.review_requested?['Under Review']:[]};
  if(!transitions[r.status]||transitions[r.status].indexOf(body.status)<0)fail_('VALIDATION','This status change is not available from the current status.');
  if(['Resolved','Closed'].indexOf(body.status)!==-1)r.resolution=reason;if(body.status==='Under Review')r.review_requested=false;history_(db,actor,r,body.status,reason);
- }else if(body.action==='assign'){
- if(!admin)fail_('FORBIDDEN','Only administrators can assign handlers.');const staff=get_(db,'Staff',body.staffId);
- if(!staff||!staff.enabled||(r.conflict_staff||[]).indexOf(staff.user_id)!==-1||(r.sensitive&&(!staff.sensitive_access||['administrator','restricted_reviewer'].indexOf(staff.role)<0)))fail_('VALIDATION','Choose an independent authorized handler.');
- if(body.replace===true)rows_(db,'Assignments').filter(a=>a.report_id===id).forEach(a=>remove_(db,'Assignments',a.id));
- if(!rows_(db,'Assignments').some(a=>a.report_id===id&&a.staff_id===staff.user_id))add_(db,'Assignments',{report_id:id,staff_id:staff.user_id,assigned_by:actor.staffId});add_(db,'Notifications',{report_id:id,staff_id:staff.user_id,kind:'assignment'});
  }else if(body.action==='metadata'){
- if(DINIG_CATEGORIES.indexOf(body.category)<0||['Low','Normal','High','Urgent'].indexOf(body.priority)<0)fail_('VALIDATION','Choose a valid category and priority.');if(get_(db,'Routing',body.category).restricted&&!r.sensitive)fail_('VALIDATION','Restrict and independently reassign this report before moving it to that category.');r.category=body.category;r.priority=body.priority;r.updated_at=now_();put_(db,'Reports',r);
- }else if(body.action==='restrict'){
- if(!admin)fail_('FORBIDDEN','Administrator access is required.');if(!Array.isArray(body.conflictStaff)||body.conflictStaff.some(x=>!uuid_(x)))fail_('VALIDATION','Choose valid staff conflicts.');const reviewer=get_(db,'Staff',body.reviewerId);
- if(!reviewer||!reviewer.enabled||!reviewer.sensitive_access||['administrator','restricted_reviewer'].indexOf(reviewer.role)<0||body.conflictStaff.indexOf(reviewer.user_id)!==-1||reviewer.user_id===actor.staffId)fail_('VALIDATION','Choose an independent authorized reviewer.');
- rows_(db,'Assignments').filter(a=>a.report_id===id).forEach(a=>remove_(db,'Assignments',a.id));add_(db,'Assignments',{report_id:id,staff_id:reviewer.user_id,assigned_by:actor.staffId});add_(db,'Notifications',{report_id:id,staff_id:reviewer.user_id,kind:'restricted_assignment'});r.sensitive=true;r.conflict_staff=body.conflictStaff;r.updated_at=now_();put_(db,'Reports',r);
- }else if(body.action==='refer'){
- if(['Resolved','Closed'].indexOf(r.status)!==-1)fail_('VALIDATION','Reopen an authorized further-review request before referring this report.');const office=get_(db,'Offices',body.officeId);if(!office||office.enabled===false)fail_('VALIDATION','Choose a university-approved office.');const explanation=text_(body.publicExplanation,'Student-visible explanation',1,2000);add_(db,'Referrals',{report_id:id,office_id:office.id,follow_up:reason,outcome:'',updated_at:now_()});history_(db,actor,r,'Referred',explanation);
- }else if(body.action==='referral_outcome'){
- const referral=get_(db,'Referrals',body.referralId);if(!referral||referral.report_id!==id)fail_('NOT_FOUND','Referral not found.');referral.outcome=reason;referral.updated_at=now_();put_(db,'Referrals',referral);
+ if(DINIG_CATEGORIES.indexOf(body.category)<0||['Low','Normal','High','Urgent'].indexOf(body.priority)<0)fail_('VALIDATION','Choose a valid category and priority.');r.category=body.category;r.priority=body.priority;r.updated_at=now_();put_(db,'Reports',r);
  }else fail_('INVALID_ACTION','Unknown staff action.');audit_(db,actor,id,body.action);return {ok:true};
 }
 function parameters_(path){const result={},query=path.split('?')[1]||'';query.split('&').filter(Boolean).forEach(pair=>{const i=pair.indexOf('=');try{result[decodeURIComponent(i<0?pair:pair.slice(0,i))]=decodeURIComponent((i<0?'':pair.slice(i+1)).replace(/\+/g,' '));}catch(ignore){fail_('VALIDATION','Invalid filter.');}});return result;}
@@ -210,20 +190,8 @@ function list_(db,actor,path){
  ['from','to'].forEach(k=>{if(query[k]&&(!/^\d{4}-\d{2}-\d{2}$/.test(query[k])||isNaN(Date.parse(query[k]))))fail_('VALIDATION','Enter a valid date filter.');});
  let reports=rows_(db,'Reports').filter(r=>allowed_(db,actor,r));
  reports=reports.filter(r=>['category','status','priority'].every(k=>!query[k]||r[k]===query[k])&&(!query.from||r.created_at.slice(0,10)>=query.from)&&(!query.to||r.created_at.slice(0,10)<=query.to)&&(!search||[r.reference,r.subject,r.code_name].some(s=>s.toLowerCase().indexOf(search)!==-1)));
- const assignments=rows_(db,'Assignments');if(query.handler)reports=reports.filter(r=>assignments.some(a=>a.report_id===r.id&&a.staff_id===query.handler));
- if(query.queue==='unassigned')reports=reports.filter(r=>!assignments.some(a=>a.report_id===r.id));
- if(query.queue==='mine')reports=reports.filter(r=>assignments.some(a=>a.report_id===r.id&&a.staff_id===actor.staffId));
- if(query.queue==='overdue')reports=reports.filter(r=>r.due_at&&r.due_at<now_()&&['Resolved','Closed'].indexOf(r.status)<0);
  if(query.queue==='review')reports=reports.filter(r=>r.review_requested);
  const offset=Math.max(0,Math.min(100000,Number(query.offset)||0));reports.sort((a,b)=>b.created_at.localeCompare(a.created_at));
  return {reports:reports.slice(offset,offset+50).map(r=>pick_(r,['id','reference','subject','code_name','category','status','priority','created_at','due_at','review_requested','sensitive']))};
 }
-function settings_(db,actor,body){
- if(actor.profile.role!=='administrator')fail_('FORBIDDEN','Administrator access is required.');
- if(body.type==='staff'){fail_('FORBIDDEN','This installation uses one administrator account. Reset its password through Script properties and resetAdminPassword.'); }else if(body.type==='office'){
- const name=text_(body.name,'Approved office',1,160),old=rows_(db,'Offices').find(o=>o.name===name);if(old){old.enabled=true;put_(db,'Offices',old);}else add_(db,'Offices',{name:name,enabled:true});
- }else if(body.type==='routing'){
- if(DINIG_CATEGORIES.indexOf(body.category)<0||body.targetHours!==null&&(!Number.isInteger(body.targetHours)||body.targetHours<1||body.targetHours>8760))fail_('VALIDATION','Choose a category and valid target hours.');
- const reviewer=body.reviewerId?get_(db,'Staff',body.reviewerId):null;if(body.reviewerId&&(!reviewer||!reviewer.enabled))fail_('VALIDATION','Choose an enabled handler.');if(body.restricted&&(!reviewer||!reviewer.sensitive_access||['administrator','restricted_reviewer'].indexOf(reviewer.role)<0))fail_('VALIDATION','Restricted routing requires an authorized reviewer.');put_(db,'Routing',{id:body.category,category:body.category,restricted:body.restricted===true,reviewer_id:body.reviewerId||null,target_hours:body.targetHours});
- }else fail_('INVALID_ACTION','Unknown setting.');audit_(db,actor,null,'settings_'+body.type);if(body.type==='staff')PropertiesService.getScriptProperties().deleteProperty('FAST_ADMIN_RECORD');return {ok:true};
-}
+function settings_(db,actor,body){fail_('FORBIDDEN','Access management and routing are disabled.');}
