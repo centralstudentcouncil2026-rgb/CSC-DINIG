@@ -98,3 +98,26 @@ test('login bootstrap returns only authorized startup data in one transaction',(
  assert.equal(limited.data.bootstrap.options.routing,undefined);
  assert.equal(h.request('/staff/login',{email:'aupcscdinig@aup.edu.ph',password:'wrong-password',bootstrap:true}).data,undefined);
 });
+
+test('TRACE-style single-admin login uses no spreadsheet calls and cache sessions fail closed',()=>{
+ const fast=createHarness();fast.context.prepareFastAdminLogin();assert(fast.props.has('FAST_ADMIN_RECORD'));
+ const open=fast.context.SpreadsheetApp.openById;fast.context.SpreadsheetApp.openById=()=>{throw Error('Fast login must not open a Sheet');};
+ const credentials={email:'aupcscdinig@aup.edu.ph',password:'Test-only initial password 2026!',fast:true};
+ const result=fast.request('/staff/login',credentials);assert(result.ok,result.error);assert.equal(result.data.fastLogin,true);assert.equal(result.data.bootstrap.list,undefined);
+ assert.equal(fast.request('/staff/login',{...credentials,password:'wrong-password'}).code,'UNAUTHORIZED');
+ assert(!/password_hash|password_salt|auth_version/.test(JSON.stringify(result)));
+ fast.context.SpreadsheetApp.openById=open;
+ const tokens={staffToken:result.data.staffToken};assert(fast.request('/staff/startup',{},tokens).ok);
+ assert.equal(fast.rows('Audit').filter(a=>a.action==='staff_login').length,1);
+ assert(fast.request('/staff/startup',{},tokens).ok);assert.equal(fast.rows('Audit').filter(a=>a.action==='staff_login').length,1);
+ assert(fast.request('/staff/logout',{},tokens).ok);assert.equal(fast.request('/staff/startup',{},tokens).code,'UNAUTHORIZED');
+ const second=fast.request('/staff/login',credentials);const key='fast-admin-session:'+crypto.createHash('sha256').update(second.data.staffToken).digest('hex');
+ const row=fast.cacheRows.get(key);const value=JSON.parse(row.value);value.touched_at=Date.now()-31*60000;row.value=JSON.stringify(value);
+ assert.equal(fast.request('/staff/startup',{}, {staffToken:second.data.staffToken}).code,'UNAUTHORIZED');
+ const third=fast.request('/staff/login',credentials);fast.cacheRows.delete('fast-admin-session:'+crypto.createHash('sha256').update(third.data.staffToken).digest('hex'));
+ assert.equal(fast.request('/staff/startup',{}, {staffToken:third.data.staffToken}).code,'UNAUTHORIZED');
+ const fourth=fast.request('/staff/login',credentials);fast.change('Staff',fast.rows('Staff')[0].id,{enabled:false});
+ assert.equal(fast.request('/staff/startup',{}, {staffToken:fourth.data.staffToken}).code,'UNAUTHORIZED');
+});
+
+test('single-admin cache rate limit cannot be bypassed by omitting fast mode',()=>{const fast=createHarness();fast.context.prepareFastAdminLogin();const body={email:'aupcscdinig@aup.edu.ph',password:'wrong-password'};for(let i=0;i<10;i++)assert.equal(fast.request('/staff/login',body).code,'UNAUTHORIZED');assert.equal(fast.request('/staff/login',{...body,fast:false}).code,'RATE_LIMIT');});

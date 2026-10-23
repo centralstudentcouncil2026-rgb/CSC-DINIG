@@ -35,7 +35,7 @@ function setup() {
 
 function doGet(e) {
  // No public report listing, credential lookup, file endpoint or staff directory.
- return respond_(function(){if(e&&e.parameter&&e.parameter.action==='health')return {service:'CSC D.I.N.I.G.',configured:!!PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID')};fail_('INVALID_ACTION','Use the application to access this service.');});
+ return respond_(function(){if(e&&e.parameter&&e.parameter.action==='health')return {service:'CSC D.I.N.I.G.',configured:!!PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID'),backendVersion:'trace-style-login-v1',fastAdminReady:!!PropertiesService.getScriptProperties().getProperty('FAST_ADMIN_RECORD')};fail_('INVALID_ACTION','Use the application to access this service.');});
 }
 function doPost(e) {
  return respond_(function(){const raw=e&&e.postData&&e.postData.contents;if(!raw||raw.length>15*1024*1024)fail_('INVALID_REQUEST','The request is missing or too large.');let input;try{input=JSON.parse(raw);}catch(ignore){fail_('INVALID_REQUEST','The request could not be read.');}if(!input||typeof input!=='object'||Array.isArray(input))fail_('INVALID_REQUEST','Invalid request.');return execute_(input);});
@@ -53,7 +53,7 @@ function passwordDigest_(password,salt){const key=PropertiesService.getScriptPro
 function passwordRecord_(password){text_(password,'Password',12,256);const salt=token_('password-salt');return {password_scheme:'hmac-sha256-v1',password_hash:passwordDigest_(password,salt),password_salt:salt,password_iterations:0,auth_version:Utilities.getUuid()};}
 function equal_(a,b){if(typeof a!=='string'||typeof b!=='string'||a.length!==b.length)return false;let difference=0;for(let i=0;i<a.length;i++)difference|=a.charCodeAt(i)^b.charCodeAt(i);return difference===0;}
 // Editor-only recovery; no public password recovery/reset action exists.
-function resetAdminPassword(){const props=PropertiesService.getScriptProperties(),password=props.getProperty('ADMIN_PASSWORD')||'';locked_(function(){const db=store_(),admin=rows_(db,'Staff').find(s=>s.email==='aupcscdinig@aup.edu.ph'&&s.role==='administrator');if(!admin)throw Error('Run setup first.');put_(db,'Staff',Object.assign({},admin,passwordRecord_(password)));audit_(db,{staffId:admin.user_id},null,'owner_password_reset');commit_(db);});props.deleteProperty('ADMIN_PASSWORD');console.log('Administrator password reset. Existing administrator sessions are invalidated.');}
+function resetAdminPassword(){const props=PropertiesService.getScriptProperties(),password=props.getProperty('ADMIN_PASSWORD')||'';locked_(function(){const db=store_(),admin=rows_(db,'Staff').find(s=>s.email==='aupcscdinig@aup.edu.ph'&&s.role==='administrator');if(!admin)throw Error('Run setup first.');put_(db,'Staff',Object.assign({},admin,passwordRecord_(password)));audit_(db,{staffId:admin.user_id},null,'owner_password_reset');commit_(db);});props.deleteProperty('ADMIN_PASSWORD');prepareFastAdminLogin();console.log('Administrator password reset. Existing administrator sessions are invalidated.');}
 function locked_(fn){const lock=LockService.getScriptLock();if(!lock.tryLock(15000))fail_('BUSY','The service is busy. Try again shortly.');try{return fn();}finally{lock.releaseLock();}}
 function assertPrivate_(file){if(file.getSharingAccess()!==DriveApp.Access.PRIVATE||file.getEditors().length||file.getViewers().length)throw Error('The database and attachment folder must remain Restricted with no additional editors or viewers. Assign staff through the application instead.');}
 
@@ -76,20 +76,48 @@ function commit_(db){
 function add_(db,name,data){return put_(db,name,Object.assign({id:Utilities.getUuid(),created_at:now_()},data));}
 function audit_(db,actor,reportId,action){add_(db,'Audit',{actor_id:actor.staffId||null,report_id:reportId||null,action:action});}
 function limit_(db,key,max,windowMs){const slot=Math.floor(Date.now()/windowMs),id=hash_(key+'|'+slot);let record=get_(db,'RateLimits',id)||{id:id,hits:0,expires_at:Date.now()+windowMs*2};record.hits++;put_(db,'RateLimits',record);if(record.hits>max)fail_('RATE_LIMIT','Too many attempts. Please wait before trying again.');}
-function session_(db,token,kind){if(typeof token!=='string'||!/^[\w-]{43}$/.test(token))return null;const row=get_(db,'Sessions',hash_(token));if(!row||row.kind!==kind||row.expires_at<=Date.now()||row.touched_at<Date.now()-DINIG_IDLE)return null;if(kind==='staff'){const staff=get_(db,'Staff',row.staff_id);if(!staff||!staff.enabled||row.auth_version!==staff.auth_version)return null;row.profile=clean_(staff);}const profile=row.profile;delete row.profile;put_(db,'Sessions',Object.assign({},row,{touched_at:Date.now()}));return kind==='staff'?{staffId:row.staff_id,profile:profile}:{reportId:row.report_id};}
+function session_(db,token,kind){if(typeof token!=='string'||!/^[\w-]{43}$/.test(token))return null;if(kind==='staff'){const cached=cachedStaffSession_(db,token);if(cached)return cached;}const row=get_(db,'Sessions',hash_(token));if(!row||row.kind!==kind||row.expires_at<=Date.now()||row.touched_at<Date.now()-DINIG_IDLE)return null;if(kind==='staff'){const staff=get_(db,'Staff',row.staff_id);if(!staff||!staff.enabled||row.auth_version!==staff.auth_version)return null;row.profile=clean_(staff);}const profile=row.profile;delete row.profile;put_(db,'Sessions',Object.assign({},row,{touched_at:Date.now()}));return kind==='staff'?{staffId:row.staff_id,profile:profile}:{reportId:row.report_id};}
 function requireSession_(db,input,kind){const actor=session_(db,kind==='staff'?input.staffToken:input.studentToken,kind);if(!actor)fail_('UNAUTHORIZED',kind==='staff'?'Please sign in to staff access.':'Enter your private tracking code to continue.');return actor;}
 function newSession_(db,kind,actor){const value=token_('session:'+kind);put_(db,'Sessions',{id:hash_(value),kind:kind,staff_id:actor.staffId||null,auth_version:actor.staffId?get_(db,'Staff',actor.staffId).auth_version:null,report_id:actor.reportId||null,touched_at:Date.now(),expires_at:Date.now()+DINIG_ABSOLUTE});return value;}
 function allowed_(db,actor,report){if(!report)return false;if(actor.reportId)return actor.reportId===report.id;const s=actor.profile;if(!s||!s.enabled||(report.conflict_staff||[]).indexOf(actor.staffId)!==-1)return false;const assigned=rows_(db,'Assignments').some(a=>a.report_id===report.id&&a.staff_id===actor.staffId);return report.sensitive?(s.sensitive_access&&assigned&&['administrator','restricted_reviewer'].indexOf(s.role)!==-1):(s.role==='administrator'||assigned);}
 function report_(db,actor,id){const report=get_(db,'Reports',id);if(!allowed_(db,actor,report))fail_('NOT_FOUND','Concern not found.');return report;}
 
+// TRACE-style single-admin credential snapshot. Only hashed credentials live
+// in Script properties. Run this editor-only helper after direct staff changes.
+function prepareFastAdminLogin(){locked_(function(){const db=store_();warmFastAdmin_(db);});console.log('Single-admin login settings refreshed.');}
+function warmFastAdmin_(db){const props=PropertiesService.getScriptProperties(),staff=rows_(db,'Staff');if(staff.length===1&&staff[0].enabled&&staff[0].role==='administrator'&&staff[0].email==='aupcscdinig@aup.edu.ph'&&staff[0].password_scheme==='hmac-sha256-v1')props.setProperty('FAST_ADMIN_RECORD',JSON.stringify(clean_(staff[0])));else props.deleteProperty('FAST_ADMIN_RECORD');}
+function fastAdmin_(){const raw=PropertiesService.getScriptProperties().getProperty('FAST_ADMIN_RECORD');if(!raw)return null;try{const row=JSON.parse(raw);return row.enabled&&row.role==='administrator'&&row.password_scheme==='hmac-sha256-v1'?row:null;}catch(ignore){return null;}}
+function staffSummary_(staff){return {id:staff.user_id,name:staff.display_name,role:staff.role};}
+function fastLogin_(body,staff){
+ const cache=CacheService.getScriptCache(),slot=Math.floor(Date.now()/300000),key='fast-login-attempts:'+slot,hits=Number(cache.get(key)||0);if(hits>=10)fail_('RATE_LIMIT','Too many login attempts. Try again in five minutes.');cache.put(key,String(hits+1),600);
+ const email=text_(body.email,'Email',1,254).toLowerCase();text_(body.password,'Password',1,256);
+ const calculated=passwordDigest_(body.password,staff.password_salt);
+ if(!equal_(hash_(email),hash_(staff.email))||!equal_(calculated,staff.password_hash))fail_('UNAUTHORIZED','Unable to sign in with those credentials.');
+ const token=token_('fast-admin-session'),row={staff_id:staff.user_id,auth_version:staff.auth_version,touched_at:Date.now(),expires_at:Date.now()+DINIG_ABSOLUTE,login_id:Utilities.getUuid(),login_at:now_(),audited:false};
+ cache.put('fast-admin-session:'+hash_(token),JSON.stringify(row),1800);
+ return {staffToken:token,fastLogin:true,bootstrap:{session:{csrf:'',student:false,staff:staffSummary_(staff),categories:DINIG_CATEGORIES,statuses:DINIG_STATUSES,routingStaff:[],emergencyGuidance:'',responseGuidance:''}}};
+}
+function cachedStaffSession_(db,token){
+ const cache=CacheService.getScriptCache(),key='fast-admin-session:'+hash_(token),raw=cache.get(key);if(!raw)return null;
+ let row;try{row=JSON.parse(raw);}catch(ignore){cache.remove(key);return null;}
+ const staff=get_(db,'Staff',row.staff_id);
+ if(row.expires_at<=Date.now()||row.touched_at<Date.now()-DINIG_IDLE||!staff||!staff.enabled||staff.auth_version!==row.auth_version){cache.remove(key);return null;}
+ if(!row.audited){put_(db,'Audit',{id:row.login_id,actor_id:row.staff_id,report_id:null,action:'staff_login',created_at:row.login_at});if(!db.fastAudits)db.fastAudits=[];db.fastAudits.push(key);}
+ row.touched_at=Date.now();cache.put(key,JSON.stringify(row),Math.max(1,Math.min(1800,Math.ceil((row.expires_at-Date.now())/1000))));
+ return {staffId:row.staff_id,profile:clean_(staff)};
+}
+function finishFastAudits_(db){(db.fastAudits||[]).forEach(key=>{const cache=CacheService.getScriptCache(),raw=cache.get(key);if(raw){const row=JSON.parse(raw);row.audited=true;cache.put(key,JSON.stringify(row),Math.max(1,Math.min(1800,Math.ceil((row.expires_at-Date.now())/1000))));}});}
 function execute_(input){
+ // Single-admin login bypasses SpreadsheetApp and Sheets writes entirely.
+ if(input.path==='/staff/login'&&input.body){const staff=fastAdmin_();if(staff)return locked_(function(){return fastLogin_(input.body,staff);});}
+
  return locked_(function(){const db=store_();let result;
  try{result=dispatch_(db,input);}catch(error){
   // Failed tracking/login attempts must still consume rate-limit buckets. No
   // report writes are committed on a failed operation.
   const rates=db.dirty.RateLimits;db.dirty=rates?{RateLimits:rates}:{};commit_(db);throw error;
  }
- commit_(db);return result;});
+ commit_(db);if(db.warmFastAdmin)warmFastAdmin_(db);finishFastAudits_(db);return result;});
 }
 function dispatch_(db,input){
  const path=text_(input.path,'Action',1,240),body=input.body||{};
@@ -105,7 +133,7 @@ function dispatch_(db,input){
   return {studentToken:newSession_(db,'student',{reportId:credential.report_id})};
  }
  if(path==='/staff/login')return login_(db,body);
- if(path==='/student/logout'||path==='/staff/logout'){const token=path==='/staff/logout'?input.staffToken:input.studentToken;if(typeof token==='string')remove_(db,'Sessions',hash_(token));return {ok:true};}
+ if(path==='/student/logout'||path==='/staff/logout'){const token=path==='/staff/logout'?input.staffToken:input.studentToken;if(typeof token==='string'){if(path==='/staff/logout')CacheService.getScriptCache().remove('fast-admin-session:'+hash_(token));remove_(db,'Sessions',hash_(token));}return {ok:true};}
  const staffPath=path.indexOf('/staff/')===0,actor=requireSession_(db,input,staffPath?'staff':'student');
  const fileMatch=path.match(/^\/(student|staff)\/attachments\/([a-f\d-]+)$/i);
  if(fileMatch){const file=get_(db,'Attachments',fileMatch[2]);if(!file)fail_('NOT_FOUND','Attachment not found.');report_(db,actor,file.report_id);const blob=DriveApp.getFileById(file.drive_id).getBlob();if(actor.staffId)audit_(db,actor,file.report_id,'download_attachment');return {name:file.name,mime:file.mime,data:Utilities.base64Encode(blob.getBytes())};}
@@ -116,6 +144,7 @@ function dispatch_(db,input){
  if(reportMatch){if(reportMatch[2]==='message'){limit_(db,'message:'+actor.staffId,40,900000);return message_(db,actor,reportMatch[1],body);}if(reportMatch[2]==='action')return staffAction_(db,actor,reportMatch[1],body);const value=detail_(db,actor,reportMatch[1]);audit_(db,actor,reportMatch[1],'view_report');return value;}
  if(path.split('?')[0]==='/staff/reports')return list_(db,actor,path);
  if(path==='/staff/options')return {staff:rows_(db,'Staff').map(s=>pick_(s,actor.profile.role==='administrator'?['user_id','email','display_name','role','sensitive_access','enabled']:['user_id','display_name','role','sensitive_access','enabled'])),offices:rows_(db,'Offices').filter(o=>o.enabled!==false).map(clean_),routing:actor.profile.role==='administrator'?rows_(db,'Routing').map(clean_):undefined,retentionDays:Number(PropertiesService.getScriptProperties().getProperty('RETENTION_DAYS')||365)};
+ if(path==='/staff/startup')return {options:dispatch_(db,{path:'/staff/options',staffToken:input.staffToken}),list:list_(db,actor,'/staff/reports?offset=0')};
  if(path==='/staff/settings')return settings_(db,actor,body);
  fail_('INVALID_ACTION','Unknown action.');
 }
@@ -138,6 +167,7 @@ function login_(db,body){
   options:dispatch_(db,{path:'/staff/options',staffToken:staffToken}),
   list:dispatch_(db,{path:'/staff/reports?offset=0',staffToken:staffToken})
  }:undefined;
+ if(body.fast===true)db.warmFastAdmin=true;
  return {staffToken:staffToken,bootstrap:bootstrap};
 }
 function validateFiles_(items){
@@ -228,5 +258,5 @@ function settings_(db,actor,body){
  }else if(body.type==='routing'){
  if(DINIG_CATEGORIES.indexOf(body.category)<0||body.targetHours!==null&&(!Number.isInteger(body.targetHours)||body.targetHours<1||body.targetHours>8760))fail_('VALIDATION','Choose a category and valid target hours.');
  const reviewer=body.reviewerId?get_(db,'Staff',body.reviewerId):null;if(body.reviewerId&&(!reviewer||!reviewer.enabled))fail_('VALIDATION','Choose an enabled handler.');if(body.restricted&&(!reviewer||!reviewer.sensitive_access||['administrator','restricted_reviewer'].indexOf(reviewer.role)<0))fail_('VALIDATION','Restricted routing requires an authorized reviewer.');put_(db,'Routing',{id:body.category,category:body.category,restricted:body.restricted===true,reviewer_id:body.reviewerId||null,target_hours:body.targetHours});
- }else fail_('INVALID_ACTION','Unknown setting.');audit_(db,actor,null,'settings_'+body.type);return {ok:true};
+ }else fail_('INVALID_ACTION','Unknown setting.');audit_(db,actor,null,'settings_'+body.type);if(body.type==='staff')PropertiesService.getScriptProperties().deleteProperty('FAST_ADMIN_RECORD');return {ok:true};
 }

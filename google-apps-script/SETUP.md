@@ -82,3 +82,11 @@ Replace Code.gs with the current backend source, keeping Crypto.gs and all exist
 ## Faster dashboard startup
 
 The login endpoint accepts `bootstrap: true` and returns the authenticated session summary, permitted dashboard options, and the first page of authorized report summaries in the same transaction. The frontend then renders without separate session/options/report-list calls. The existing authorization and serializers are reused. Older deployments without this field remain compatible via the previous startup flow. Update the existing Apps Script deployment to activate the one-request path; its URL stays the same.
+
+## TRACE-style single-administrator login
+
+This revision checks a server-only HMAC password verifier in Script properties and creates a hashed-key CacheService session without opening or writing the spreadsheet during login. The dashboard shell appears immediately after authentication; authorized report data loads separately. Browser tokens remain memory-only. Every protected operation still checks the current Sheet account, role, enabled flag, auth version and report permissions. The login audit is written on the first successful protected request. Cache eviction ends a session early; no cached report contents or public credentials are introduced.
+
+After pasting the updated backend into Code.gs, keep Crypto.gs and all existing secrets. Run the editor-only prepareFastAdminLogin function once, then deploy a new version of the existing web app. It creates a server-only credential snapshot only when exactly one staff row exists, enabled, administrator, with the configured CSC email and an HMAC verifier. A legacy PBKDF2 account needs one successful sign-in to migrate and warm this snapshot. Owner password resets refresh it automatically. After direct Sheet account edits, run prepareFastAdminLogin again. Creating/updating other staff through the application removes the snapshot and returns to the standard authorization flow.
+
+Check /exec?action=health: backendVersion should be trace-style-login-v1; fastAdminReady reports whether the single-account snapshot is ready. No secret or password is returned. Pushing GitHub source does not update the Apps Script deployment.

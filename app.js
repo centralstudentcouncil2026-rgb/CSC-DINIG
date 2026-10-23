@@ -95,9 +95,16 @@ function tracking(){studentPage('track');main.innerHTML=`<section class="compact
 function login(){
  const logo=new URL('./assets/csc-torch.png',import.meta.url).href;
  main.innerHTML=loginView({dashboardUrl:dashboardUrls[portal],logo,errorBox});
- passwordToggles();bind(main.querySelector('form'),async(data,form)=>{const result=await api('/staff/login',{...Object.fromEntries(data),bootstrap:true});form.elements.password.value='';
+ passwordToggles();bind(main.querySelector('form'),async(data,form)=>{const result=await api('/staff/login',{...Object.fromEntries(data),bootstrap:true,fast:true});form.elements.password.value='';
   const initial=result.bootstrap,reportId=new URLSearchParams(appRoute().split('?')[1]||'').get('report');
-  if(initial?.session?.staff&&initial.options&&initial.list&&!reportId){state=initial.session;csrf=state.csrf;options=initial.options;filters={};offset=0;await staffDashboard(initial.list);window.scrollTo(0,0);main.focus();}
+  if(result.fastLogin&&initial?.session?.staff&&!reportId){
+   state=initial.session;csrf=state.csrf;filters={};offset=0;
+   main.innerHTML='<section class="panel"><div class="eyebrow">Staff workspace</div><h1>Concern desk</h1><p class="loading" role="status">Loading your reports…</p><p class="form-error" role="alert"></p><button class="secondary" id="retry-startup" hidden>Retry loading reports</button><button class="secondary" id="startup-logout">Log out</button></section>';
+   main.querySelector('#startup-logout').onclick=async()=>{try{await api('/staff/logout',{});}catch{}finally{location.assign(dashboardUrls.officers);}};
+   const load=async()=>{const retry=main.querySelector('#retry-startup');if(retry){retry.hidden=true;main.querySelector('.form-error').textContent='';main.querySelector('.loading').textContent='Loading your reports…';}try{const startup=await api('/staff/startup');if(currentPath()!=='/staff'||!main.querySelector('#retry-startup'))return;options=startup.options;await staffDashboard(startup.list);window.scrollTo(0,0);main.focus();}catch(error){if(!hasSession()){await render();return;}if(main.querySelector('#retry-startup')){main.querySelector('.loading').textContent='Reports could not be loaded.';main.querySelector('.form-error').textContent=error.message;main.querySelector('#retry-startup').hidden=false;}}};
+   main.querySelector('#retry-startup').onclick=load;void load();
+  }
+  else if(initial?.session?.staff&&initial.options&&initial.list&&!reportId){state=initial.session;csrf=state.csrf;options=initial.options;filters={};offset=0;await staffDashboard(initial.list);window.scrollTo(0,0);main.focus();}
   else await render();});
 }
 

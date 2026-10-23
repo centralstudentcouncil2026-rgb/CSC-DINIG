@@ -17,7 +17,7 @@ export async function request(path,body){
   if(!response.ok||!result.ok){if(result.code==='UNAUTHORIZED'){if(path.startsWith('/staff/'))staffToken='';else if(path.startsWith('/student/'))studentToken='';}throw Error(result.error||'The request could not be completed.');}
   const data=result.data||{};
   if(path==='/track'){studentToken=data.studentToken;return {ok:true};}
-  if(path==='/staff/login'){staffToken=data.staffToken;return {ok:true,bootstrap:data.bootstrap||null};}
+  if(path==='/staff/login'){staffToken=data.staffToken;return {ok:true,bootstrap:data.bootstrap||null,fastLogin:data.fastLogin===true};}
   if(path==='/student/logout')studentToken='';if(path==='/staff/logout')staffToken='';
   if(path==='/session'){if(!data.student)studentToken='';if(!data.staff)staffToken='';}
   return data;
