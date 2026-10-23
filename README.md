@@ -1,78 +1,72 @@
 # CSC D.I.N.I.G.
 
-**Discuss Issues, Needs, Ideas, and Grievances** — a private student concern and follow-up service. Uses the original CSC torch, shared gold gradient/navy header, campus photograph, and framework-free HTML/CSS/JavaScript conventions from the current CSC sites. Inter is served locally with its license.
+**Discuss Issues, Needs, Ideas, and Grievances** — an HTML/CSS/JavaScript student concern platform using **Google Sheets for reports and staff accounts**, **Google Apps Script for private server operations**, and a private Google Drive folder for attachments.
 
-This project adds a Node.js HTTP server and PostgreSQL to meet the private-cookie and server authorization requirements. Staff authenticate against the **existing CSC Supabase Auth provider**. No demo login or public staff registration exists in the application. The other CSC repositories are unchanged.
+This version needs **no separate Node hosting, PostgreSQL, Supabase project, or database password**. It reuses the original CSC torch, gold/navy header, campus photograph and local Inter font. The existing CSC dashboard cards already point Students/COLE to the student entry and Officers to the staff entry.
 
-## Deployment status and required setup
+## Current deployment state
 
-Source implementation and local tests are provided. **No live database was migrated and no production concern service was deployed.** A database password, authorized staff UUIDs, and server hosting were not available. GitHub Pages cannot execute this backend or set its HttpOnly tracking sessions.
+The HTML interface and Apps Script source are implemented and tested locally. The [Apps Script project](https://script.google.com/home/projects/1EMimtH76pRx1UM-B5XfHb85AWu0jle1Bj71uigK053RCIE2v0uouv1n4/edit) has been created in the existing CSC Google account and its code/manifest uploaded. **The Google backend is not deployed yet:** the owner must enter private setup properties and authorize Google access before setup/deployment. Until a valid `/exec` URL is configured, the site shows its introduction and blocks concern/login forms rather than collecting private information without a backend.
 
-The root `index.html` and `staff/index.html` are static **launch notices** for GitHub Pages. Student and COLE dashboard cards open the root notice; Officers open `staff/`. They collect no reports, codes, attachments, or credentials. The functioning application entry remains `public/index.html`, served through the Node application. Run `node scripts/build-launch-pages.js` to rebuild notices and their allowlisted `docs/` publication bundle. Configure GitHub Pages to publish **main → /docs**, which excludes the private server source and tests. Do not move the report-collection interface onto GitHub Pages and present it as a working secure service. Once the server is deployed, update the dashboard cards to that origin (`/` for students/COLE; `/staff` for staff).
+The initial administrator email is **aupcscdinig@aup.edu.ph**. Its D.I.N.I.G. password is chosen privately during Google setup; it is not the Google account password and is never embedded in HTML.
 
-1. Provision a Node-compatible HTTPS service (or deploy the included Dockerfile). Serve both `public/` and `/api/` through this server on the **same dedicated origin**, for example your approved university D.I.N.I.G. hostname. Do not share the application's cookies with the existing GitHub Pages origin.
-2. Run `npm ci`. Copy `.env.example` to `.env` for local setup, or supply environment variables using the hosting platform's secret manager. Configure `APP_ORIGIN`, `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and a randomly generated `RATE_LIMIT_SECRET`. The Supabase key is a publishable key, not a service-role key. Database credentials remain on the server.
-3. Run `npm run migrate` **once** with a Supabase database owner connection. The migration creates only the isolated `dinig` schema and `dinig_runtime` role. It references the existing `auth.users` table but does not alter it or the existing apps' tables, authentication, or policies. Back up the database and review the migration before production execution. Re-running the same migration deliberately fails rather than partially recreating tables.
-4. Create/identify the first real staff account through the existing Supabase administration interface. Obtain its authenticated user UUID, then provision it through the trusted SQL console:
+## Finish setup
 
-   ```sql
-   INSERT INTO dinig.staff_profiles(user_id, display_name, role, sensitive_access)
-   VALUES ('ACTUAL-AUTH-USER-UUID', 'Approved administrator', 'administrator', true);
-   ```
+Follow [google-apps-script/SETUP.md](google-apps-script/SETUP.md):
 
-   The UUID must exist in `auth.users`. Membership in other CSC apps does **not** automatically grant D.I.N.I.G. permissions. Public Supabase account creation, if enabled for other apps, cannot create a D.I.N.I.G. staff profile.
-5. For runtime, use a separate server-only database login with `NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE` and membership in `dinig_runtime`, rather than the migration owner. Grant only the necessary database CONNECT privilege and `GRANT dinig_runtime TO your_runtime_login`. Every request transaction explicitly switches to `dinig_runtime`, sets its validated principal locally, and resets those settings at commit/rollback. Do **not** grant this role to `anon`, `authenticated`, public API roles, or client accounts. Keep `dinig` out of PostgREST's exposed schemas.
-6. Start with `npm start`. Configure TLS, database backups, monitoring, and log redaction at the hosting layer. Do not log request bodies, passwords, cookies, private codes, report text, or attachment content. The server logs only generic failure codes. The database connection verifies TLS when `DATABASE_SSL=true`; install your provider's trusted CA chain if necessary. Do not disable certificate verification.
-7. From `/staff`, authorize the remaining real staff accounts. Configure independent restricted reviewers, approved university offices, and category routing/service targets. At least **two independent reviewers** are needed if the first assigned reviewer may be involved in a later further-review request. Restricted submissions fail safely if no independent authorized reviewer is available. An optional student-facing staff selector uses separate random public IDs and excludes a named handler from case access automatically. Staff display names therefore appear in that selector; use approved professional display names.
-8. Set only university-approved `EMERGENCY_GUIDANCE` and `RESPONSE_GUIDANCE`. Blank values produce no invented contact information or response promises. `RETENTION_DAYS` records policy guidance; it **does not delete reports**. Establish an approved review/export/deletion process and encrypted backup retention before collecting real data. There is deliberately no automatic report deletion job.
-9. Verify live Supabase credentials and permissions with authorized test accounts before launch. The local tests substitute only the external identity-provider boundary; they exercise the real application HTTP handlers and real PostgreSQL schema/RLS in PGlite. They are not a production penetration test or security certification.
+1. Create an Apps Script project while signed in as the approved database owner. Paste `Code.gs`, `Crypto.gs` and the supplied manifest.
+2. Set private Script properties `TOKEN_SECRET` and a strong initial `ADMIN_PASSWORD`. A random secret has been prepared in the ignored local `google-apps-script/.setup-secrets.txt`; it must not be committed or pasted into chat.
+3. Run `setup`. It creates the private Sheet, database tabs and attachment folder, stores the administrator's salted password hash, and removes the plaintext initial password property.
+4. Deploy as a web app, execute as Me, accessible to Anyone. Send the public URL ending in `/exec` to the coding agent. No password, secret code or database credential needs to be sent in chat.
+5. Configure that public URL in `public/backend-config.js`, run `npm run build`, commit and push. GitHub Pages publishes **main → /docs**. Only the HTML bundle is published; Apps Script source and backend setup secrets are excluded.
 
-For local development only: use `APP_ORIGIN=http://127.0.0.1:3000`, `NODE_ENV=development`, a development database, then `npm run dev`. Production/non-loopback origins require HTTPS. Do not point browser QA at real private reports.
+If your university blocks anonymous Apps Script deployments, its administrator must approve the deployment. Never make the Sheet or Drive folder public to work around a policy restriction.
 
-### Supplying the remaining connection safely
+## Included workflows
 
-The local ignored `.env` can hold `DATABASE_URL`. Obtain the URI from the existing CSC Supabase project's Connect panel, using a connection/pooler mode supported by your server network. Enter the real password **in the local file or hosting secret manager**, never in chat or a committed file. Preserve URI encoding for special characters in passwords. Existing CSC publishable settings can be reused; a service-role API key is not needed by this application.
+- Account-free submission, review, duplicate-submit guard, one-time private-code display, copy/download, and unique public reference numbers.
+- Private-code tracking, original concern, status timeline, authorized downloads, student/staff messages, corrections as follow-ups, feedback and independent further review.
+- Staff login against the private Sheet, staff permissions, assigned/unassigned/overdue/review queues, search/filters, category/priority updates, assignment, restricted/conflicted handling, private notes, approved-office referrals, follow-up outcomes, resolution and closure.
+- Administrator-only staff account creation/update. No public signup. Disabling an account or changing its password revokes access on subsequent requests. Owner-side password reset is available only through the Apps Script editor.
+- Private reports have no public listing. No report content or attachments are automatically forwarded or emailed externally.
 
-Run `npm run preflight` to check required settings without printing their values. After applying the migration and provisioning staff, run `npm run preflight -- --database` to verify connectivity, TLS, runtime-role access and the administrator profile. Configure the hosting health check to `/ready`: it returns 200 only when the database/schema is reachable and an enabled D.I.N.I.G. administrator exists. `/health` checks only whether the Node process is alive.
+## Security model and limitations
 
-To complete deployment, the operator must provide access to a Node/Docker hosting service, configure the database connection in that service's secret manager, and identify the existing Supabase account email/UUID to authorize as the first administrator. The public GitHub Pages URL can remain an entry link that redirects to the actual server once its HTTPS origin is known.
+Every report and file operation checks its report-scoped session or authorized staff membership in Apps Script. Sensitive cases require an explicit assignment and reviewer permission; involved staff are excluded. The Sheet and Drive folder must remain Restricted and owner-only because Sheets does not provide database row-level policies.
 
-## Implemented flows
+Staff passwords use **salted PBKDF2-HMAC-SHA256 with 600,000 iterations**, through a locally bundled library. Plaintext passwords are neither stored nor logged. Tracking and session secrets are HMAC-derived using a separately generated 256-bit server secret and unique nonces; only hashes are stored. Reference numbers and nicknames cannot authenticate a student.
 
-- `/`: public introduction, submit/track actions, privacy information, small staff access link.
-- `/submit`: accessible server-validated form → review → transactional report/history creation → one-time private-code confirmation, copy, download. Duplicate nicknames are allowed. A random idempotency UUID blocks repeated submissions. If the final response is lost after commit, the private code cannot be replayed/recovered; the UI never silently creates another report on retry.
-- `/track`: code submitted by POST → report-scoped session → status, timeline, original report, private downloads and conversation. Students can add corrections as messages, confirm resolution, leave feedback or request independent review. No report ID parameter can widen a student session's scope.
-- `/staff`: existing Supabase credentials → separately authorized staff membership → queues/filter/search/pagination, report details, student replies, private notes, assignment, priority/category, approved-office referrals and follow-up, resolution and status history.
-- Administrators authorize existing auth accounts, manage category routing and service targets, add approved offices, assign/reassign cases, and restrict sensitive/conflicted cases. A sensitive case requires explicit assignment and reviewer privileges, including for administrators. A handler can access only explicitly assigned ordinary reports and never conflicted reports. Notifications persist for assignments and further-review requests; staff see pending review items in their queue. No full report is automatically emailed or forwarded.
+The user approved replacing the original HttpOnly-cookie design with **memory-only bearer sessions**. Tokens are held only in JavaScript memory, expire after 30 minutes idle/eight hours absolutely, and disappear on reload. Students re-enter their tracking code; staff sign in again. Tokens/codes do not enter URLs, localStorage, sessionStorage, analytics or application logs. This is a deliberate platform tradeoff, not cookie-based authentication.
 
-## Security boundaries and operational limits
+Private reads/downloads use POST with browser credentials omitted. User content is rendered as escaped text and written through Sheets `stringValue` JSON records to prevent formulas. Related records are committed using one Sheets batch update under a script lock. Private attachments are returned only after report authorization, never through public Drive URLs.
 
-- Tracking secrets use 24 cryptographically random bytes (192 bits); only SHA-256 hashes are stored. References use a separate random human-readable identifier. Neither a reference nor a nickname authenticates anyone.
-- Session secrets are also random and stored only as hashes. Production cookies are `__Host-`, `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/`. Sessions expire after 30 minutes of inactivity and at 8 hours absolutely. Staff membership is checked on every authenticated request, so disabling a staff profile stops existing sessions. Provider-side revocation alone is not an immediate D.I.N.I.G. session revocation; also disable the D.I.N.I.G. profile or remove its sessions.
-- All mutations require an exact Origin match and a cookie-bound CSRF token. Tokens remain in memory; no tracking codes or auth tokens enter localStorage, URLs or analytics. There are no analytics or third-party runtime assets.
-- Database row policies enforce report scope and exclude internal notes/history from student principals. Anonymous and Supabase client roles receive no schema grants. Application checks additionally enforce workflow, roles, conflicts and assignment rules. Pool settings are transaction-local to prevent cross-request principal leakage.
-- Content is rendered as escaped text. Strict CSP disallows inline scripts, framing and external resources. Private API responses and downloads use `no-store`, `no-referrer` and `nosniff`.
-- PNG/JPEG/PDF uploads are limited by count, individual/combined byte size, extension and file signature. Files are stored as private database bytes, returned only after the same report authorization check, and downloaded as opaque attachments. There is no public bucket, signed public URL, or content preview. File-signature validation is **not malware scanning**; add your university-approved scanning service and document its data handling before allowing untrusted documents in production. Do not forward sensitive attachments to third-party scanners without approval.
-- Database-backed rate limits: 5 submissions/hour/IP; 10 tracking attempts/15 minutes/IP; 10 staff-login attempts/15 minutes/IP; 20 student messages/15 minutes/IP; 40 staff messages/15 minutes/IP, plus a general mutation ceiling. IP keys are HMAC-pseudonymized. Shared campus networks may require approved tuning. `TRUST_PROXY=true` is safe only if the reverse proxy overwrites `X-Forwarded-For` and the Node port is not publicly reachable.
-- Schedule infrastructure housekeeping through trusted operations, for example deleting expired session/rate-limit rows and old submission-key records. Keep report retention separate; never silently delete concern data.
-- Database/host operators retain privileged access by design. This service provides private, scoped access, not a promise of perfect anonymity or immunity from compromise.
+Uploads are limited to matching PNG/JPEG/PDF signatures/extensions, three files, 5 MB each and 10 MB combined. Signature checking is not malware scanning. Apps Script provides no trustworthy requester IP here; anonymous limits are global, and service quotas/lock contention can limit availability. Benchmark real deployment performance, particularly password hashing, before launch. See SETUP.md for quota, retention and orphan-file maintenance details.
 
-## Checks
+The Google/Workspace operators remain trusted. These checks do not constitute a production security certification.
+
+## Development and verification
 
 ```text
+npm ci
+npm run build
 npm run check
 npm test
+npm start
 ```
 
-`check` verifies JavaScript syntax and local asset paths. Integration tests cover duplicate nicknames, one-way code storage, duplicate submissions, reference/ID tampering, scoped sessions, internal-note isolation, restricted access, authorized downloads, assignment, complete resolution/further-review flow, conflict reassignment, CSRF, upload validation, rate limits, session expiry, configuration permissions and audit records. Browser QA is described in `test/README.md`.
+Node is used only for local tooling, building, tests and optional preview. Students need only a browser. `npm start` serves a local static preview. The Apps Script production runtime is managed by Google.
+
+`test/sheets.test.js` runs the actual Apps Script code and password hashing with mocked Google Sheets/Drive services. It verifies hashing, duplicate nicknames, code/reference isolation, ID tampering, private notes, assignments/restrictions, referrals, resolution/review, attachment authorization, atomic write failure, formula safety, expiry and password-change revocation. These are local logic tests, not a live Google deployment audit.
+
+`test/sheets-browser.mjs` exercises the HTML and actual Apps Script logic through that local harness at desktop/tablet/mobile sizes. It verifies the complete submission/tracking/login path, memory-only session behavior, no script execution, no browser-storage credentials, and correct dashboard returns.
 
 ## Main files
 
-- `public/index.html`, `app.js`, `styles.css`: mobile/desktop student and staff interfaces.
-- `public/csc-header.css`, `assets/`: reused CSC branding and locally served font.
-- `server/app.js`, `reports.js`: authenticated HTTP endpoints and report workflows.
-- `server/security.js`, `database.js`, `config.js`: validation, cookies, CSRF, sessions, private database transactions/configuration.
-- `migrations/001_dinig.sql`: all entities, relationships, indexes, grants and row policies.
-- `test/application.test.js`: isolated integration verification; provider adapter is test-only.
+- `index.html`, `staff/index.html`, `docs/`: generated student/staff HTML entries and GitHub Pages bundle.
+- `public/app.js`, `styles.css`, `backend.js`, `backend-config.js`: UI, static hash routes and Apps Script transport.
+- `google-apps-script/Code.gs`: private Sheets/Drive operations, accounts and authorization.
+- `google-apps-script/Crypto.gs`, `NOBLE-LICENSE.txt`: bundled password hashing and license; rebuild with `npm run build:crypto`.
+- `google-apps-script/appsscript.json`, `SETUP.md`: Google deployment configuration and instructions.
+- `scripts/build-static.js`: rebuilds static outputs with correct subdirectory asset paths.
 
-No production credentials or private student/staff data belong in this repository.
+The earlier `server/`, `migrations/` and PostgreSQL tests are retained as **legacy reference only**. They are not used by the HTML/Sheets site. There is no need to configure or deploy them. Existing CSC S.Y.N.C., T.R.A.C.E. and L.I.V.E. authentication and repositories are unchanged.

@@ -1,0 +1,61 @@
+/* Uniform CSC branding, scoped to avoid changing application controls. */
+.csc-site-header {
+  box-sizing: border-box;
+  display: block;
+  position: relative;
+  z-index: 30;
+  width: 100%;
+  height: 64px;
+  min-height: 64px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 4px solid #0c1665;
+  border-radius: 0;
+  background: linear-gradient(90deg, #facc15 0%, #eab308 50%, #ca8a04 100%);
+  color: #0c1665;
+  font-family: Arial, Helvetica, sans-serif;
+  box-shadow: none;
+}
+@media (max-width: 380px) {
+  .csc-site-header .csc-header-brand strong { max-width: 130px; }
+  .csc-site-header .csc-header-brand small { display: none; }
+}
+.csc-site-header *, .csc-site-header *::before, .csc-site-header *::after { box-sizing: border-box; }
+.csc-site-header .csc-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  max-width: 1240px;
+  height: 60px;
+  margin: 0 auto;
+  padding: 9px 20px;
+}
+.csc-site-header .csc-header-brand { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+.csc-site-header .csc-header-brand > div { min-width: 0; flex: 1; }
+.csc-site-header .csc-header-brand img { display: block; width: 26px; height: 39px; object-fit: contain; flex-shrink: 0; border: 0; border-radius: 0; background: transparent; }
+.csc-site-header .csc-header-brand strong { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; margin: 0; color: #0c1665; font-family: Arial, Helvetica, sans-serif; font-size: 16px; font-weight: 700; line-height: 1.3; letter-spacing: 0; }
+.csc-site-header .csc-header-brand small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; margin-top: 3px; color: #0c1665; font-size: 9px; font-weight: 400; line-height: 1.4; letter-spacing: .7px; }
+.csc-site-header .csc-header-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: nowrap; gap: 8px; flex-shrink: 0; }
+.csc-site-header .csc-header-actions > button { display: inline-grid; place-items: center; position: relative; flex: 0 0 34px; width: 34px; height: 34px; min-height: 0; margin: 0; padding: 0; border-radius: 50%; font-size: 18px; line-height: 1; }
+.csc-site-header .csc-trace-brand > div { container-type: inline-size; }
+.csc-site-header .csc-trace-brand small { max-width: none; font-size: min(10px, 3cqw); line-height: 1.4; letter-spacing: 0; text-overflow: clip; }
+.csc-site-header .csc-dashboard-back { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex-shrink: 0; min-height: 36px; padding: 8px 12px; border: 1px solid #0c16654d; border-radius: 7px; background: #fff9; color: #0c1665; font-family: Arial, Helvetica, sans-serif; font-size: 12px; font-weight: 700; line-height: 1.3; text-decoration: none; white-space: nowrap; }
+.csc-site-header .csc-dashboard-back:hover { background: white; }
+.csc-site-header .csc-dashboard-back svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.csc-site-header :is(a,button):focus-visible { outline: 3px solid #0c1665; outline-offset: 3px; }
+@media (max-width: 620px) {
+  .csc-site-header { height: 58px; min-height: 58px; }
+  .csc-site-header .csc-header-inner { height: 54px; padding: 8px 12px; gap: 10px; flex-wrap: nowrap; }
+  .csc-site-header .csc-header-brand { gap: 9px; }
+  .csc-site-header .csc-header-brand img { width: 22px; height: 33px; }
+  .csc-site-header .csc-header-brand strong { font-size: 12px; }
+  .csc-site-header .csc-header-brand small { max-width: 170px; font-size: 8px; letter-spacing: 0; }
+  .csc-site-header .csc-dashboard-back { min-height: 34px; padding: 7px 9px; font-size: 10px; }
+  .csc-site-header .csc-dashboard-back span { display: none; }
+  .csc-site-header .csc-header-actions { margin-left: auto; }
+  .csc-site-header .csc-header-actions > button { flex-basis: 30px; width: 30px; height: 30px; font-size: 17px; }
+  .csc-site-header .csc-trace-brand small { display: block; max-width: none; font-size: min(10px, 3cqw); letter-spacing: 0; }
+}

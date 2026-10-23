@@ -7,18 +7,22 @@
     "node": ">=20.13"
   },
   "scripts": {
-    "start": "node server/index.js",
-    "dev": "node --watch server/index.js",
-    "migrate": "node scripts/migrate.js",
-    "preflight": "node scripts/preflight.js",
-    "test": "node --test --test-concurrency=1 test/application.test.js",
+    "start": "node scripts/preview.js",
+    "dev": "node scripts/preview.js",
+    "build": "node scripts/build-static.js",
+    "build:crypto": "node scripts/build-apps-script-crypto.js",
+    "setup:secret": "node scripts/create-google-setup-secret.js",
+    "legacy:migrate": "node scripts/migrate.js",
+    "legacy:preflight": "node scripts/preflight.js",
+    "test": "node --test --test-concurrency=1 test/sheets.test.js",
+    "test:legacy": "node --test --test-concurrency=1 test/application.test.js",
     "check": "node scripts/check.js"
-  },
-  "dependencies": {
-    "pg": "^8.16.3"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.3.14",
-    "@fontsource-variable/inter": "^5.3.0"
+    "@fontsource-variable/inter": "^5.3.0",
+    "@noble/hashes": "^1.8.0",
+    "esbuild": "^0.28.2",
+    "pg": "^8.23.1"
   }
 }
