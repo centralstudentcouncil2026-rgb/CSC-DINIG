@@ -12,7 +12,7 @@ This is a NEW installation. It does not delete or migrate the old database. The 
 8. Open the /exec URL with ?action=health appended. It should return configured:true, backendVersion:dinig-fresh-single-admin-v3 and fastAdminReady:true.
 9. Send only the public URL ending /exec to Codex. Codex will switch public/backend-config.js, rebuild, test and push the frontend. Do not send your password or private server properties.
 
-Administrator email: aupcscdinig@aup.edu.ph. This is an application account, not Google sign-in. No public registration or additional staff creation is enabled. Login uses built-in HMAC-SHA256, Script properties and cached sessions with no Sheet access during credential verification. Reports load after the admin workspace appears. Tokens remain memory-only in the browser. Cache eviction can end sessions early; idle timeout remains 30 minutes.
+Administrator email: aupcscdinig@aup.edu.ph. This is an application account, not Google sign-in. No public registration or additional staff creation is enabled. Login uses built-in HMAC-SHA256, Script properties and cached sessions with no Sheet access during credential verification. Reports load after the admin workspace appears. Student tokens remain memory-only. Admin session tokens are kept in per-tab sessionStorage to survive reload; the server revalidates them. Passwords are not saved. Cache eviction can end sessions early; idle timeout remains 30 minutes.
 
 For a later password reset: set a new ADMIN_PASSWORD property and run resetAdminPassword. It refreshes the verifier and revokes old sessions. Never rerun setup expecting it to erase report data.
 

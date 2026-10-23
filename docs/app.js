@@ -1,5 +1,5 @@
-import {loginView} from './login-view.js?v=28622c9f01ff';
-import {request as api,isConfigured,hasSession,guestContext} from './backend.js?v=28622c9f01ff';
+import {loginView} from './login-view.js?v=60ee5ae8bb98';
+import {request as api,isConfigured,hasSession,guestContext} from './backend.js?v=60ee5ae8bb98';
 const main=document.querySelector('#main');
 const appRoute=()=>location.hash.startsWith('#/')?location.hash.slice(1):(document.body.dataset.entry==='staff'?'/staff':'/');
 const currentPath=()=>appRoute().split('?')[0];
@@ -44,7 +44,8 @@ window.addEventListener('popstate',()=>{unsavedCode=false;render();});
 window.addEventListener('beforeunload',event=>{if(unsavedCode){event.preventDefault();event.returnValue='';}});
 async function render(){
  try{document.title='CSC D.I.N.I.G.';delete document.body.dataset.studentPage;const back=document.querySelector('header [data-dashboard-back]');back.href=dashboardUrls[portal];back.innerHTML='← <span>CSC Websites</span>';back.setAttribute('aria-label','Back to CSC Websites');delete back.dataset.staffLogout;back.removeAttribute('aria-disabled');if(currentPath()==='/staff'&&state?.staff&&hasSession())adminHeader();
-  // Memory-only tokens cannot survive reload. Public screens need no remote
+  // Student tokens stay memory-only; admin sessions can resume in this tab.
+  // Public screens need no remote
   // authentication check before they can appear or accept input.
   if(isConfigured()&&currentPath()==='/submit'){state=state||guestContext();submission();return;}
   if(!hasSession()){
@@ -62,6 +63,7 @@ async function render(){
     return;
    }
   }
+  if(currentPath()==='/staff'&&!state?.staff&&hasSession())main.innerHTML='<section class="panel desk-status" role="status"><span class="desk-spinner" aria-hidden="true"></span><p>Restoring your admin session…</p></section>';
   state=await api('/session');csrf=state.csrf;
   if(!isConfigured()&&currentPath()!=='/'){main.innerHTML='<section class="compact panel"><h1>We’re preparing to listen.</h1><p class="muted">The council is connecting this service. Concern submission and staff login will open after setup is complete.</p><a class="button" href="#/">Return home</a></section>';return;}
   if(currentPath()==='/submit')submission();

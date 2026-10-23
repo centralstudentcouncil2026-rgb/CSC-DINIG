@@ -34,7 +34,7 @@ Every report operation checks its report-scoped session or authorized staff memb
 
 At the owner’s request for faster Apps Script sign-in, staff passwords use **salted, server-keyed HMAC-SHA256**. This is a fast verifier, not an adaptive password hash. The key stays in Script properties, separate from the Sheet. If both the key and Sheet are compromised, guesses are much cheaper than with PBKDF2. Existing PBKDF2 accounts migrate only after a successful password check; their first login remains slow. Keep the bundled crypto library for unmigrated accounts. Plaintext passwords are neither stored nor logged. Tracking and session secrets are HMAC-derived using a separately generated 256-bit server secret and unique nonces; only hashes are stored. Reference numbers and nicknames cannot authenticate a student.
 
-The user approved replacing the original HttpOnly-cookie design with **memory-only bearer sessions**. Tokens are held only in JavaScript memory, expire after 30 minutes idle/eight hours absolutely, and disappear on reload. Students re-enter their tracking code; staff sign in again. Tokens/codes do not enter URLs, localStorage, sessionStorage, analytics or application logs. This is a deliberate platform tradeoff, not cookie-based authentication.
+Student tracking sessions stay memory-only and require the tracking code again after reload. Administrator sessions are saved in this tab’s sessionStorage, scoped to the configured backend URL, so reload restores the session after server validation. Passwords are never saved by the application. Logout, rejected/expired sessions, and backend changes clear the saved token. Sessions retain server-enforced 30-minute idle and eight-hour absolute limits; cache eviction can end them earlier. No tokens enter URLs, localStorage, analytics or application logs. This uses bearer sessions rather than HttpOnly cookies.
 
 Private reads use POST with browser credentials omitted. User content is rendered as escaped text and written through Sheets `stringValue` JSON records to prevent formulas. Related records are committed using one Sheets batch update under a script lock. File attachments and their download endpoints are disabled.
 
@@ -56,7 +56,7 @@ Node is used only for local tooling, building, tests and optional preview. Stude
 
 `test/sheets.test.js` runs the actual Apps Script code and password hashing with mocked Google Sheets/Drive services. It verifies hashing, duplicate nicknames, code/reference isolation, ID tampering, private notes, assignments/restrictions, referrals, resolution/review, attachment authorization, atomic write failure, formula safety, expiry and password-change revocation. These are local logic tests, not a live Google deployment audit.
 
-`test/sheets-browser.mjs` exercises the HTML and actual Apps Script logic through that local harness at desktop/tablet/mobile sizes. It verifies the complete submission/tracking/login path, memory-only session behavior, no script execution, no browser-storage credentials, and correct dashboard returns.
+`test/sheets-browser.mjs` exercises the HTML and actual Apps Script logic through that local harness at desktop/tablet/mobile sizes. It verifies the complete submission/tracking/login path, memory-only student sessions, admin session restoration/expiry, no script execution, no saved passwords, and correct dashboard returns.
 
 ## Main files
 
