@@ -47,7 +47,10 @@ function uuid_(value){return typeof value==='string'&&/^[a-f\d]{8}-[a-f\d]{4}-[a
 function text_(value,label,min,max){if(typeof value!=='string'||value.trim().length<min||value.length>max||value.indexOf('\0')!==-1)fail_('VALIDATION',label+' must contain '+min+'–'+max+' characters.');return value.trim();}
 function hash_(value){return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,value,Utilities.Charset.UTF_8).map(b=>('0'+((b+256)%256).toString(16)).slice(-2)).join('');}
 function token_(purpose){const key=PropertiesService.getScriptProperties().getProperty('TOKEN_SECRET');if(!/^[a-f\d]{64,}$/i.test(key||''))fail_('NOT_CONFIGURED','This service is not configured.');const nonce=purpose+'|'+Utilities.getUuid()+'|'+Utilities.getUuid()+'|'+Date.now();return Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(nonce,key,Utilities.Charset.UTF_8)).replace(/=+$/,'');}
-function passwordRecord_(password){text_(password,'Password',12,256);const salt=token_('password-salt');return {password_hash:DinigCrypto.derive(password,salt,DINIG_PASSWORD_ITERATIONS),password_salt:salt,password_iterations:DINIG_PASSWORD_ITERATIONS,auth_version:Utilities.getUuid()};}
+// Fast verifier requested for Apps Script latency. The server-only HMAC key
+// protects a Sheet-only leak, but this has no adaptive password work factor.
+function passwordDigest_(password,salt){const key=PropertiesService.getScriptProperties().getProperty('TOKEN_SECRET');if(!/^[a-f\d]{64,}$/i.test(key||''))fail_('NOT_CONFIGURED','This service is not configured.');return Utilities.computeHmacSha256Signature('DINIG|password|v1|'+JSON.stringify([salt,password]),key,Utilities.Charset.UTF_8).map(b=>('0'+((b+256)%256).toString(16)).slice(-2)).join('');}
+function passwordRecord_(password){text_(password,'Password',12,256);const salt=token_('password-salt');return {password_scheme:'hmac-sha256-v1',password_hash:passwordDigest_(password,salt),password_salt:salt,password_iterations:0,auth_version:Utilities.getUuid()};}
 function equal_(a,b){if(typeof a!=='string'||typeof b!=='string'||a.length!==b.length)return false;let difference=0;for(let i=0;i<a.length;i++)difference|=a.charCodeAt(i)^b.charCodeAt(i);return difference===0;}
 // Editor-only recovery; no public password recovery/reset action exists.
 function resetAdminPassword(){const props=PropertiesService.getScriptProperties(),password=props.getProperty('ADMIN_PASSWORD')||'';locked_(function(){const db=store_(),admin=rows_(db,'Staff').find(s=>s.email==='aupcscdinig@aup.edu.ph'&&s.role==='administrator');if(!admin)throw Error('Run setup first.');put_(db,'Staff',Object.assign({},admin,passwordRecord_(password)));audit_(db,{staffId:admin.user_id},null,'owner_password_reset');commit_(db);});props.deleteProperty('ADMIN_PASSWORD');console.log('Administrator password reset. Existing administrator sessions are invalidated.');}
@@ -122,8 +125,10 @@ function login_(db,body){
  limit_(db,'staff-login-global',10,300000);
  const email=text_(body.email,'Email',1,254).toLowerCase();text_(body.password,'Password',1,256);
  const staff=rows_(db,'Staff').find(s=>s.email===email),salt=staff?staff.password_salt:'unrecognized-account-dummy-salt';
- const calculated=DinigCrypto.derive(body.password,salt,staff?staff.password_iterations:DINIG_PASSWORD_ITERATIONS);
- if(!staff||!staff.enabled||!equal_(calculated,staff.password_hash))fail_('UNAUTHORIZED','Unable to sign in with those credentials.');
+ const legacy=staff&&!staff.password_scheme&&staff.password_iterations===DINIG_PASSWORD_ITERATIONS;
+ const calculated=legacy?DinigCrypto.derive(body.password,salt,DINIG_PASSWORD_ITERATIONS):passwordDigest_(body.password,salt);
+ if(!staff||!staff.enabled||(!legacy&&staff.password_scheme!=='hmac-sha256-v1')||!equal_(calculated,staff.password_hash))fail_('UNAUTHORIZED','Unable to sign in with those credentials.');
+ if(legacy){put_(db,'Staff',Object.assign({},staff,passwordRecord_(body.password)));audit_(db,{staffId:staff.user_id},null,'password_verifier_migrated');}
  audit_(db,{staffId:staff.user_id},null,'staff_login');return {staffToken:newSession_(db,'staff',{staffId:staff.user_id})};
 }
 function validateFiles_(items){
@@ -207,7 +212,7 @@ function settings_(db,actor,body){
  const email=text_(body.email,'Staff email',3,254).toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||['administrator','handler','restricted_reviewer'].indexOf(body.role)<0||email===actor.profile.email)fail_('VALIDATION','Enter another staff email and a valid role.');
  if(body.sensitiveAccess&&body.role==='handler')fail_('VALIDATION','Restricted access requires a reviewer or administrator role.');
  const old=rows_(db,'Staff').find(s=>s.email===email),id=old?old.id:Utilities.getUuid();
- const password=body.password||'',credentials=password||!old?passwordRecord_(password):pick_(old,['password_hash','password_salt','password_iterations','auth_version']);
+ const password=body.password||'',credentials=password||!old?passwordRecord_(password):pick_(old,['password_scheme','password_hash','password_salt','password_iterations','auth_version']);
  put_(db,'Staff',Object.assign({id:id,user_id:id,public_id:old?old.public_id:Utilities.getUuid(),email:email,display_name:text_(body.name,'Staff name',1,100),role:body.role,enabled:body.enabled===true,sensitive_access:body.sensitiveAccess===true,created_at:old?old.created_at:now_()},credentials));
  }else if(body.type==='office'){
  const name=text_(body.name,'Approved office',1,160),old=rows_(db,'Offices').find(o=>o.name===name);if(old){old.enabled=true;put_(db,'Offices',old);}else add_(db,'Offices',{name:name,enabled:true});

@@ -33,7 +33,7 @@ Confirm **Services** lists **Google Sheets API** (identifier `Sheets`, version v
 
 Select `setup` in the Apps Script editor and click Run. Review the permission prompt and authorize this project. This is the owner-side step; students never authorize Drive or Sheets access.
 
-The function creates the private database tabs and attachment folder, seeds the administrator account, and prints **only the Sheet URL** to the execution log. It stores a salted PBKDF2-HMAC-SHA256 password hash with 600,000 iterations and removes `ADMIN_PASSWORD` from Script properties after success. It preserves existing accounts when rerun. Keep `TOKEN_SECRET` unchanged after launch.
+The function creates the private database tabs and attachment folder, seeds the administrator account, and prints **only the Sheet URL** to the execution log. It stores a salted, server-keyed HMAC-SHA256 password verifier and removes `ADMIN_PASSWORD` from Script properties after success. It preserves existing accounts when rerun. Keep `TOKEN_SECRET` unchanged after launch.
 
 Keep the spreadsheet and attachment folder **Restricted**, with no additional viewers/editors or public/domain sharing. Never publish the Sheet to the web. Handlers get access through the application; sharing the entire database would bypass case restrictions. Database/Drive owners and Google Workspace administrators remain trusted operators.
 
@@ -74,3 +74,7 @@ Uploads allow up to three matching PNG/JPEG/PDF files, 5 MB each and 10 MB combi
 Apps Script does not provide a trustworthy requester IP here. Limits are deliberately global for anonymous tracking (100/15 min), submissions (60/hour), and staff login (10/5 min), plus per-session messaging limits. This can cause shared-service throttling and does not replace a full abuse-prevention service. Apps Script execution, Sheet size, and Drive quotas apply; benchmark password-hashing time and simultaneous usage on the actual Google deployment. This setup is suited to modest traffic and is not a security certification.
 
 Schedule trusted review of expired sessions, rate-limit records, commit markers and orphan files. No cleanup endpoint or automatic report deletion is exposed. For an administrator password reset, the owner sets a new `ADMIN_PASSWORD` property and runs `resetAdminPassword` in the editor; it clears the property and revokes that administrator's old sessions.
+
+## Update existing deployments to fast verification
+
+Replace Code.gs with the current backend source, keeping Crypto.gs and all existing Script properties unchanged. Deploy → Manage deployments → Edit → Version: New version → Deploy. Keep the same deployment URL. Do not rerun setup or reset passwords. Existing accounts verify PBKDF2 once on their next successful sign-in and then migrate; failed attempts never migrate. New/changed passwords use HMAC-SHA256 immediately. This performance tradeoff removes adaptive password stretching, though the server-only HMAC key, unique salts, rate limits and authorization remain.

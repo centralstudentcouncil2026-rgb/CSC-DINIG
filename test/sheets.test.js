@@ -6,8 +6,8 @@ const h=createHarness(),adminId=h.rows('Staff')[0].id;
 const login=h.request('/staff/login',{email:'aupcscdinig@aup.edu.ph',password:'Test-only initial password 2026!'});assert(login.ok);const admin={staffToken:login.data.staffToken};
 const concern=()=>({submissionKey:crypto.randomUUID(),codeName:'Duplicate nickname',category:'Academic',subject:'Campus concern',details:'Please review this issue.',privacy:true});
 let first,second,student,id;
-test('Sheet setup stores PBKDF2 hashes and removes the initial plaintext property',()=>{
- const staff=h.rows('Staff')[0];assert.equal(staff.password_iterations,600000);assert.equal(staff.password_hash,crypto.pbkdf2Sync('Test-only initial password 2026!',staff.password_salt,600000,32,'sha256').toString('hex'));assert.equal(h.props.has('ADMIN_PASSWORD'),false);assert(!JSON.stringify(h.rows('Staff')).includes('Test-only initial password'));
+test('Sheet setup stores server-keyed SHA-256 hashes and removes the initial plaintext property',()=>{
+ const staff=h.rows('Staff')[0];assert.equal(staff.password_scheme,'hmac-sha256-v1');assert.equal(staff.password_iterations,0);assert.equal(staff.password_hash,crypto.createHmac('sha256',h.props.get('TOKEN_SECRET')).update('DINIG|password|v1|'+JSON.stringify([staff.password_salt,'Test-only initial password 2026!'])).digest('hex'));assert.equal(h.props.has('ADMIN_PASSWORD'),false);assert(!JSON.stringify(h.rows('Staff')).includes('Test-only initial password'));
  assert.equal(h.request('/staff/login',{email:'not-authorized@example.invalid',password:'bad-password'}).code,'UNAUTHORIZED');
  assert(!JSON.stringify(h.request('/staff/options',{},admin)).includes('password_hash'));
  const originalHash=staff.password_hash;
@@ -68,4 +68,18 @@ test('idle expiry, disabled accounts and password resets invalidate sessions',()
 test('failed tracking attempts remain rate limited and no public listing is exposed',()=>{
  h.clearLimits();for(let i=0;i<100;i++)assert.equal(h.request('/track',{code:'invalid'}).code,'UNAUTHORIZED');assert.equal(h.request('/track',{code:'invalid'}).code,'RATE_LIMIT');
  const output=JSON.parse(h.context.doGet({parameter:{action:'list'}}).text);assert.equal(output.ok,false);assert(!JSON.stringify(output).includes('Campus concern'));
+});
+
+test('legacy passwords migrate only on successful login and subsequent logins skip PBKDF2',()=>{
+ const legacy=createHarness(),staff=legacy.rows('Staff')[0],password='Test-only initial password 2026!',salt='legacy-test-salt';
+ legacy.change('Staff',staff.id,{password_scheme:null,password_salt:salt,password_iterations:600000,password_hash:crypto.pbkdf2Sync(password,salt,600000,32,'sha256').toString('hex')});
+ assert.equal(legacy.request('/staff/login',{email:staff.email,password:'wrong-password'}).code,'UNAUTHORIZED');
+ assert.equal(legacy.rows('Staff')[0].password_scheme,null);
+ const result=legacy.request('/staff/login',{email:staff.email,password});assert(result.ok,result.error);
+ assert.equal(legacy.rows('Staff')[0].password_scheme,'hmac-sha256-v1');
+ legacy.context.DinigCrypto={derive(){throw Error('Fast verification must not call PBKDF2');}};
+ assert(legacy.request('/staff/login',{email:staff.email,password}).ok);
+ assert.equal(legacy.request('/staff/login',{email:staff.email,password:'wrong-password'}).code,'UNAUTHORIZED');
+ assert.equal(legacy.request('/staff/login',{email:'unknown@example.invalid',password}).code,'UNAUTHORIZED');
+ assert(legacy.request('/session',{}, {staffToken:result.data.staffToken}).data.staff);
 });
