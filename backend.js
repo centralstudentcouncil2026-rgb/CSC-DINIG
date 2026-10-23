@@ -1,4 +1,4 @@
-import {backendUrl} from './backend-config.js?v=a1cd9427f967';
+import {backendUrl} from './backend-config.js?v=fc796dfb420a';
 const staffSessionKey='csc-dinig:staff-session:v1';
 let studentToken='',staffToken='';
 function rememberStaff(token){staffToken=token||'';try{if(staffToken)sessionStorage.setItem(staffSessionKey,JSON.stringify({backendUrl,token:staffToken}));else sessionStorage.removeItem(staffSessionKey);}catch{/* Storage may be unavailable; the current memory session still works. */}}

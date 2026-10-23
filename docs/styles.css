@@ -175,14 +175,15 @@ main:has(>.admin-desk){width:min(1440px,100%);padding:18px 24px}
 .admin-desk>.form-actions button{min-height:36px;padding:7px 14px;font-size:12px}
 .admin-desk .empty{padding:24px 16px}
 .admin-desk .empty p{margin:0}
-@media(min-width:901px) and (min-height:560px){
- body:has(main>.admin-desk){height:100svh;min-height:0}
- main:has(>.admin-desk){min-height:0;flex:1;padding-block:14px}
- .admin-desk{height:100%;min-height:0;gap:10px}
+@media(min-width:901px){
+ .admin-desk .filters{grid-template-columns:repeat(5,minmax(0,1fr)) auto;gap:10px}
+ .admin-desk .filters .actions{flex-wrap:nowrap}
  .admin-desk-banner{padding:18px 26px}
- .admin-desk .report-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-right:4px;scrollbar-gutter:stable}
- body:has(main>.admin-desk) footer{flex-shrink:0;padding-block:10px}
+ body:has(main>.admin-desk) footer{padding-block:10px}
 }
+.admin-desk .desk-search{flex:1;max-width:420px;min-width:180px;font-size:11px;gap:5px;margin-right:auto}
+.admin-desk .desk-search input{min-height:38px;height:38px;font-size:12px;padding:8px 12px}
+.admin-desk-toolbar{column-gap:18px}
 @media(max-width:900px){
  main:has(>.admin-desk){padding:16px}
  .admin-desk-banner{padding:20px;border-radius:14px}
@@ -194,7 +195,8 @@ main:has(>.admin-desk){width:min(1440px,100%);padding:18px 24px}
  .admin-desk-banner p{font-size:12px}
  .admin-desk #filters{padding:14px}
  .admin-desk .filters{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
- .admin-desk .filters label:first-child,.admin-desk .filters .actions{grid-column:1/-1}
+ .admin-desk .filters .actions{grid-column:1/-1}
+ .admin-desk .desk-search{order:3;flex-basis:100%;max-width:none}
  .admin-desk .filters .actions button[type=submit]{flex:1}
  .admin-desk-toolbar h2{font-size:18px}
  .admin-desk .queue-tabs button{font-size:11px;padding:6px 9px}
