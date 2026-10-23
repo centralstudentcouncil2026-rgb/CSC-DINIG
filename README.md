@@ -6,7 +6,9 @@ This project adds a Node.js HTTP server and PostgreSQL to meet the private-cooki
 
 ## Deployment status and required setup
 
-Source implementation and local tests are provided. **No live database was migrated and no production service was deployed.** A database password, authorized staff UUIDs, and server hosting were not available. GitHub Pages cannot execute this backend or set its HttpOnly tracking sessions.
+Source implementation and local tests are provided. **No live database was migrated and no production concern service was deployed.** A database password, authorized staff UUIDs, and server hosting were not available. GitHub Pages cannot execute this backend or set its HttpOnly tracking sessions.
+
+The root `index.html` and `staff/index.html` are static **launch notices** for GitHub Pages. Student and COLE dashboard cards open the root notice; Officers open `staff/`. They collect no reports, codes, attachments, or credentials. The functioning application entry remains `public/index.html`, served through the Node application. Run `node scripts/build-launch-pages.js` to rebuild notices and their allowlisted `docs/` publication bundle. Configure GitHub Pages to publish **main → /docs**, which excludes the private server source and tests. Do not move the report-collection interface onto GitHub Pages and present it as a working secure service. Once the server is deployed, update the dashboard cards to that origin (`/` for students/COLE; `/staff` for staff).
 
 1. Provision a Node-compatible HTTPS service (or deploy the included Dockerfile). Serve both `public/` and `/api/` through this server on the **same dedicated origin**, for example your approved university D.I.N.I.G. hostname. Do not share the application's cookies with the existing GitHub Pages origin.
 2. Run `npm ci`. Copy `.env.example` to `.env` for local setup, or supply environment variables using the hosting platform's secret manager. Configure `APP_ORIGIN`, `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and a randomly generated `RATE_LIMIT_SECRET`. The Supabase key is a publishable key, not a service-role key. Database credentials remain on the server.
