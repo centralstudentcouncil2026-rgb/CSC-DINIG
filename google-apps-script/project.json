@@ -5,5 +5,5 @@
   "administratorLogin": "aupcscdinig@aup.edu.ph",
   "deploymentUrl": "https://script.google.com/macros/s/AKfycbw9ARLiYVdEsffr8Kwr2Xkfi7z2G4-OVoaO5w_lTis3SooQxK9Q7GAv4pEVxqUH86OIlw/exec",
   "status": "User-supplied deployment verified: health configured and anonymous session successful. Staff login and report workflow require live acceptance testing.",
-  "pendingBackendUpdate": "HMAC-SHA256 staff verification with successful-login legacy migration; owner must update existing Apps Script deployment."
+  "pendingBackendUpdate": "Fast HMAC-SHA256 verification plus one-request authenticated dashboard startup; owner must update existing Apps Script deployment."
 }

@@ -129,7 +129,16 @@ function login_(db,body){
  const calculated=legacy?DinigCrypto.derive(body.password,salt,DINIG_PASSWORD_ITERATIONS):passwordDigest_(body.password,salt);
  if(!staff||!staff.enabled||(!legacy&&staff.password_scheme!=='hmac-sha256-v1')||!equal_(calculated,staff.password_hash))fail_('UNAUTHORIZED','Unable to sign in with those credentials.');
  if(legacy){put_(db,'Staff',Object.assign({},staff,passwordRecord_(body.password)));audit_(db,{staffId:staff.user_id},null,'password_verifier_migrated');}
- audit_(db,{staffId:staff.user_id},null,'staff_login');return {staffToken:newSession_(db,'staff',{staffId:staff.user_id})};
+ audit_(db,{staffId:staff.user_id},null,'staff_login');
+ const staffToken=newSession_(db,'staff',{staffId:staff.user_id});
+ // Bootstrap in the same locked transaction and reuse the same authorization
+ // and serializers as separate requests. No extra network trips or Sheet opens.
+ const bootstrap=body.bootstrap===true?{
+  session:dispatch_(db,{path:'/session',staffToken:staffToken}),
+  options:dispatch_(db,{path:'/staff/options',staffToken:staffToken}),
+  list:dispatch_(db,{path:'/staff/reports?offset=0',staffToken:staffToken})
+ }:undefined;
+ return {staffToken:staffToken,bootstrap:bootstrap};
 }
 function validateFiles_(items){
  if(items===undefined)return [];

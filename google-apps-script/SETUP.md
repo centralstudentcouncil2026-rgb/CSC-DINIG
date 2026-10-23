@@ -78,3 +78,7 @@ Schedule trusted review of expired sessions, rate-limit records, commit markers 
 ## Update existing deployments to fast verification
 
 Replace Code.gs with the current backend source, keeping Crypto.gs and all existing Script properties unchanged. Deploy → Manage deployments → Edit → Version: New version → Deploy. Keep the same deployment URL. Do not rerun setup or reset passwords. Existing accounts verify PBKDF2 once on their next successful sign-in and then migrate; failed attempts never migrate. New/changed passwords use HMAC-SHA256 immediately. This performance tradeoff removes adaptive password stretching, though the server-only HMAC key, unique salts, rate limits and authorization remain.
+
+## Faster dashboard startup
+
+The login endpoint accepts `bootstrap: true` and returns the authenticated session summary, permitted dashboard options, and the first page of authorized report summaries in the same transaction. The frontend then renders without separate session/options/report-list calls. The existing authorization and serializers are reused. Older deployments without this field remain compatible via the previous startup flow. Update the existing Apps Script deployment to activate the one-request path; its URL stays the same.

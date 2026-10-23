@@ -83,3 +83,18 @@ test('legacy passwords migrate only on successful login and subsequent logins sk
  assert.equal(legacy.request('/staff/login',{email:'unknown@example.invalid',password}).code,'UNAUTHORIZED');
  assert(legacy.request('/session',{}, {staffToken:result.data.staffToken}).data.staff);
 });
+
+test('login bootstrap returns only authorized startup data in one transaction',()=>{
+ h.clearLimits();
+ const result=h.request('/staff/login',{email:'aupcscdinig@aup.edu.ph',password:'Test-only initial password 2026!',bootstrap:true});
+ assert(result.ok,result.error);const b=result.data.bootstrap,tokens={staffToken:result.data.staffToken};
+ assert.deepEqual(b.session,h.request('/session',{},tokens).data);
+ assert.deepEqual(b.options,h.request('/staff/options',{},tokens).data);
+ assert.deepEqual(b.list,h.request('/staff/reports?offset=0',{},tokens).data);
+ assert(!/password_hash|password_salt|auth_version/.test(JSON.stringify(b)));
+ const limited=h.request('/staff/login',{email:handler.email,password:'A separate test password 2026!',bootstrap:true});
+ assert(limited.ok,limited.error);assert.equal(limited.data.bootstrap.session.staff.role,'handler');
+ assert(limited.data.bootstrap.list.reports.every(r=>h.rows('Assignments').some(a=>a.report_id===r.id&&a.staff_id===handler.id)));
+ assert.equal(limited.data.bootstrap.options.routing,undefined);
+ assert.equal(h.request('/staff/login',{email:'aupcscdinig@aup.edu.ph',password:'wrong-password',bootstrap:true}).data,undefined);
+});
