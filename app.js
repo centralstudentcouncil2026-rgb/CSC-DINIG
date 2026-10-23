@@ -1,5 +1,5 @@
-import {loginView} from './login-view.js';
-import {request as api,downloadAttachment,isConfigured,hasSession,guestContext} from './backend.js';
+import {loginView} from './login-view.js?v=9a54b9d56014';
+import {request as api,downloadAttachment,isConfigured,hasSession,guestContext} from './backend.js?v=9a54b9d56014';
 const main=document.querySelector('#main');
 const appRoute=()=>location.hash.startsWith('#/')?location.hash.slice(1):(document.body.dataset.entry==='staff'?'/staff':'/');
 const currentPath=()=>appRoute().split('?')[0];

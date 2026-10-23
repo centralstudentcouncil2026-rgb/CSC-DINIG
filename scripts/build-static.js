@@ -1,7 +1,12 @@
 import fs from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 import {loginView} from '../public/login-view.js';
 const root=new URL('../',import.meta.url);
 const template=await fs.readFile(new URL('public/index.html',root),'utf8');
+const versionSources=['index.html','app.js','login-view.js','backend.js','backend-config.js','styles.css','csc-header.css'];
+const versionHash=createHash('sha256');
+for(const file of versionSources)versionHash.update(await fs.readFile(new URL('public/'+file,root)));
+const assetVersion=versionHash.digest('hex').slice(0,12);
 for(const base of ['', 'docs/']){
  await fs.mkdir(new URL(base+'staff/',root),{recursive:true});
  for(const staff of [false,true]){
@@ -14,9 +19,13 @@ for(const base of ['', 'docs/']){
    const view=loginView({dashboardUrl,logo:prefix+'assets/csc-torch.png',errorBox:'<p class="form-error" role="alert" tabindex="-1"></p>'}).replace('<form class="dinig-login-form">','<form class="dinig-login-form" inert>');
    html=html.replace('<p class="loading" role="status">Opening D.I.N.I.G.…</p>',view+'<noscript><p class="form-error">Enable JavaScript to sign in.</p></noscript>');
   }
+  html=html.replace(/((?:href|src)="[^"?#]+\.(?:css|js))"/g,'$1?v='+assetVersion+'"');
   await fs.writeFile(new URL(base+(staff?'staff/index.html':'index.html'),root),html);
  }
- for(const file of ['app.js','login-view.js','backend.js','backend-config.js','csc-header.css'])await fs.copyFile(new URL('public/'+file,root),new URL(base+file,root));
+ for(const file of ['app.js','login-view.js','backend.js','backend-config.js','csc-header.css']){
+  const content=await fs.readFile(new URL('public/'+file,root),'utf8');
+  await fs.writeFile(new URL(base+file,root),file.endsWith('.js')?content.replace(/(from\s+['"]\.\/[^'"?]+\.js)(['"])/g,'$1?v='+assetVersion+'$2'):content);
+ }
  const css=(await fs.readFile(new URL('public/styles.css',root),'utf8')).replaceAll("url('/assets/","url('./assets/");await fs.writeFile(new URL(base+'styles.css',root),css);
  await fs.cp(new URL('public/assets/',root),new URL(base+'assets/',root),{recursive:true});
  await fs.writeFile(new URL(base+'.nojekyll',root),'');
