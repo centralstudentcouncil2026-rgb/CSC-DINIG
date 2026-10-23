@@ -33,6 +33,75 @@
 }
 
 /* Staff login shares the CSC campus photography and softly shaded account card. */
+.student-optionals{margin:0;border:1px solid var(--border);border-radius:10px;padding:0 14px;background:#f8fafc}
+.student-optionals>summary{padding:10px 0;font-size:13px}
+.student-optionals[open]>.form-grid{padding:8px 0 14px}
+body[data-student-page] .csc-dashboard-back span{display:inline}
+@media(min-width:901px){
+ body[data-student-page]:not([data-student-page=home]) main{width:min(1200px,100%);padding:16px 24px;display:flex;flex-direction:column;justify-content:center}
+ body[data-student-page]:not([data-student-page=home]) main>.narrow{width:100%;max-width:1000px}
+ body[data-student-page] .page-intro{margin:0 0 14px}
+ body[data-student-page] .page-intro h1{font-size:28px;margin:8px 0}
+ body[data-student-page] .page-intro p{font-size:13px;line-height:1.5;margin:0}
+ body[data-student-page] .panel{padding:20px}
+ body[data-student-page] h2{font-size:19px;margin-bottom:8px}
+ body[data-student-page] label{font-size:12px;gap:5px;line-height:1.5}
+ body[data-student-page] input,body[data-student-page] select{min-height:40px;padding:9px 11px;font-size:14px}
+ body[data-student-page] input[type=checkbox]{min-height:0;width:18px;height:18px}
+ body[data-student-page] textarea{min-height:78px;padding:10px;font-size:14px}
+ body[data-student-page] .form-grid{gap:12px 16px}
+ body[data-student-page=submit] #concern>.form-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ body[data-student-page=submit] #concern>.form-grid>.full:has(input[name=subject]){grid-column:auto}
+ body[data-student-page] .section-label{padding-bottom:12px;margin-bottom:14px}
+ body[data-student-page] .form-actions{padding-top:12px;margin-top:14px;gap:10px}
+ body[data-student-page] button,body[data-student-page] .button{min-height:40px;padding:9px 16px;font-size:13px}
+ body[data-student-page] .form-error{margin:10px 0;padding:9px}
+ body[data-student-page] .stack{gap:16px}
+ body[data-student-page] .compact{width:100%;margin:0 auto}
+ body[data-student-page] .review-list{grid-template-columns:130px minmax(0,1fr);gap:9px 16px;margin:14px 0}
+ body[data-student-page] .review-list dd{font-size:13px;line-height:1.5}
+ body[data-student-page=review] .review-list{max-height:clamp(90px,calc(100dvh - 440px),360px);min-height:90px;overflow:auto;overscroll-behavior:contain;padding-right:12px}
+ body[data-student-page=confirmation] main>.panel{max-width:760px}
+ body[data-student-page=confirmation] h1{font-size:30px;margin:10px 0}
+ body[data-student-page=confirmation] p{font-size:13px;line-height:1.5;margin-bottom:10px}
+ body[data-student-page=confirmation] .success-mark{width:36px;height:36px;font-size:21px;margin-bottom:10px}
+ body[data-student-page=confirmation] .code-box{font-size:17px;padding:14px;margin:12px 0}
+ body[data-student-page=confirmation] .divider{margin:14px 0}
+ body[data-student-page=report] main{justify-content:flex-start}
+ body[data-student-page=report] .report-top{margin:0 0 14px}
+ body[data-student-page=report] .report-top .page-intro{margin:0}
+ body[data-student-page=report] .report-top h1{font-size:26px}
+ body[data-student-page=report] .report-layout{gap:16px;min-height:0;height:calc(100dvh - 240px)}
+ body[data-student-page=report] .report-layout>div,body[data-student-page=report] .report-layout>aside{overflow:auto;min-height:0;padding:2px 6px 2px 2px;overscroll-behavior:contain}
+ body[data-student-page=report] .report-layout .panel{margin-bottom:14px}
+ body[data-student-page]>.csc-site-header{flex-shrink:0}
+ body[data-student-page]>footer{padding:10px 0;flex-shrink:0}
+ body[data-student-page=submit]:has(.student-optionals[open]) #concern{max-height:calc(100dvh - 215px);overflow:auto;overscroll-behavior:contain}
+}
+@media(max-width:900px){
+ body[data-student-page] .page-intro{margin:8px 0 18px}
+ body[data-student-page] .compact{margin:8px auto}
+ body[data-student-page] .form-grid{gap:16px}
+ body[data-student-page] .section-label{padding-bottom:12px;margin-bottom:18px}
+ body[data-student-page] .form-actions{margin-top:18px;padding-top:16px}
+ body[data-student-page] .csc-dashboard-back{max-width:140px}
+ body[data-student-page] .csc-dashboard-back span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100px}
+}
+@media(min-width:901px) and (max-height:650px){
+ body[data-student-page]:not([data-student-page=home]) main{padding-block:10px}
+ body[data-student-page] .page-intro{margin-bottom:10px}
+ body[data-student-page] .page-intro h1{font-size:24px;margin:5px 0}
+ body[data-student-page] .page-intro p{font-size:12px}
+ body[data-student-page] .panel{padding:16px}
+ body[data-student-page=submit] .section-label{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:10px;margin-bottom:10px}
+ body[data-student-page=submit] .section-label h2{font-size:16px;margin:0}
+ body[data-student-page=submit] #concern>.form-grid{gap:8px 14px}
+ body[data-student-page] input,body[data-student-page] select{min-height:36px;padding-block:7px}
+ body[data-student-page] textarea{min-height:62px}
+ body[data-student-page] .form-actions{padding-top:10px;margin-top:10px}
+ body[data-student-page=submit] .student-optionals>summary{padding-block:8px}
+ body[data-student-page=confirmation] main>.panel{padding:16px 24px}
+}
 body:has(.dinig-login){background:linear-gradient(110deg,#081833c9,#08183366),url('./assets/login-campus.jpg') center/cover fixed}
 body:has(.dinig-login)>.csc-site-header,body:has(.dinig-login)>footer{display:none}
 main:has(.dinig-login){width:100%;max-width:none;margin:0;padding:0}
