@@ -150,3 +150,54 @@ main:has(.dinig-login){width:100%;max-width:none;margin:0;padding:0}
 @media(prefers-reduced-motion:reduce){.dinig-login-form[aria-busy=true]>button::after{animation:none}}
 
 .desk-status{display:flex;align-items:center;justify-content:center;gap:12px;min-height:104px;padding:20px;flex-wrap:wrap}.desk-status p{margin:0;color:var(--muted);font-size:14px}.desk-status .form-error{color:#a52525}.desk-spinner{width:18px;height:18px;flex-shrink:0;border:2px solid var(--border);border-top-color:var(--navy);border-radius:50%;animation:desk-spin .8s linear infinite}@keyframes desk-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.desk-spinner{animation:none}}
+
+/* Compact central admin desk. Concern details and public screens keep their layout. */
+main:has(>.admin-desk){width:min(1440px,100%);padding:18px 24px}
+.admin-desk{display:flex;flex-direction:column;gap:12px;min-width:0}
+.admin-desk-banner{flex-shrink:0;border-radius:16px;padding:22px 28px;background:linear-gradient(100deg,#081833ed,#0d214ba8 65%,#14234b55),url('./assets/campus.jpg') center 45%/cover;color:#fff}
+.admin-desk-banner .eyebrow{color:#ffe497;font-size:10px;letter-spacing:1.4px}
+.admin-desk-banner h1{font-size:clamp(25px,2.7vw,36px);letter-spacing:-1px;margin:7px 0;line-height:1.15;overflow-wrap:anywhere}
+.admin-desk-banner p{font-size:13px;line-height:1.5;margin:0;color:#e7edf8}
+.admin-desk #filters{padding:16px 18px;flex-shrink:0}
+.admin-desk .filters{gap:12px 14px;align-items:end}
+.admin-desk .filters label{font-size:11px;gap:5px}
+.admin-desk .filters input,.admin-desk .filters select{min-height:38px;height:38px;padding:8px 10px;font-size:12px}
+.admin-desk .filters .actions{gap:8px}
+.admin-desk .filters button{min-height:38px;padding:8px 12px;font-size:12px}
+.admin-desk-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.admin-desk-toolbar h2{margin:0;font-size:19px;letter-spacing:-.4px}
+.admin-desk .queue-tabs{margin:0;gap:6px}
+.admin-desk .queue-tabs button{min-height:34px;padding:6px 12px}
+.admin-desk .report-list{margin:0;gap:8px;align-content:start}
+.admin-desk .report-row{padding:14px 18px;gap:12px}
+.admin-desk .report-row strong{font-size:15px;margin:5px 0}
+.admin-desk>.form-actions{margin:0;padding:0;border:0;flex-shrink:0}
+.admin-desk>.form-actions button{min-height:36px;padding:7px 14px;font-size:12px}
+.admin-desk .empty{padding:24px 16px}
+.admin-desk .empty p{margin:0}
+@media(min-width:901px) and (min-height:560px){
+ body:has(main>.admin-desk){height:100svh;min-height:0}
+ main:has(>.admin-desk){min-height:0;flex:1;padding-block:14px}
+ .admin-desk{height:100%;min-height:0;gap:10px}
+ .admin-desk-banner{padding:18px 26px}
+ .admin-desk .report-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-right:4px;scrollbar-gutter:stable}
+ body:has(main>.admin-desk) footer{flex-shrink:0;padding-block:10px}
+}
+@media(max-width:900px){
+ main:has(>.admin-desk){padding:16px}
+ .admin-desk-banner{padding:20px;border-radius:14px}
+ .admin-desk .filters{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:560px){
+ .admin-desk-banner h1{font-size:26px;letter-spacing:-.7px}
+ .admin-desk-banner .eyebrow{font-size:9px;letter-spacing:1px;line-height:1.5}
+ .admin-desk-banner p{font-size:12px}
+ .admin-desk #filters{padding:14px}
+ .admin-desk .filters{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .admin-desk .filters label:first-child,.admin-desk .filters .actions{grid-column:1/-1}
+ .admin-desk .filters .actions button[type=submit]{flex:1}
+ .admin-desk-toolbar h2{font-size:18px}
+ .admin-desk .queue-tabs button{font-size:11px;padding:6px 9px}
+ .admin-desk .report-row{padding:14px;grid-template-columns:minmax(0,1fr)}
+ .admin-desk .report-row>div:last-child{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+}
