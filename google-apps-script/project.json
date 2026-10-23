@@ -5,5 +5,6 @@
   "administratorLogin": "aupcscdinig@aup.edu.ph",
   "deploymentUrl": "https://script.google.com/macros/s/AKfycbw9ARLiYVdEsffr8Kwr2Xkfi7z2G4-OVoaO5w_lTis3SooQxK9Q7GAv4pEVxqUH86OIlw/exec",
   "status": "User-supplied deployment verified: health configured and anonymous session successful. Staff login and report workflow require live acceptance testing.",
-  "pendingBackendUpdate": "TRACE-style cached single-admin login and simplified concern submission schema; owner must update existing Apps Script deployment."
+  "pendingBackendUpdate": "TRACE-style cached single-admin login and simplified concern submission schema; owner must update existing Apps Script deployment.",
+  "freshDatabasePlan": "Owner creating a new Sheet-bound project with FreshStart.gs; awaiting new /exec URL. Existing database and endpoint remain unchanged."
 }

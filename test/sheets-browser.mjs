@@ -6,7 +6,7 @@ import {createRequire} from 'node:module';
 import assert from 'node:assert/strict';
 import {createHarness} from './sheets-harness.js';
 const require=createRequire(import.meta.url),{chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
-const root=fileURLToPath(new URL('../docs/',import.meta.url)),prefix='/CSC-DINIG',h=createHarness();
+const root=fileURLToPath(new URL('../docs/',import.meta.url)),prefix='/CSC-DINIG',h=createHarness(process.env.DINIG_BACKEND_SOURCE?{source:process.env.DINIG_BACKEND_SOURCE,crypto:false,noSecret:true}:{});
 const types={'.js':'text/javascript','.css':'text/css','.html':'text/html','.png':'image/png','.jpg':'image/jpeg','.woff2':'font/woff2'};
 const server=http.createServer(async(req,res)=>{try{const pathname=new URL(req.url,'http://localhost').pathname;if(!pathname.startsWith(prefix+'/'))throw Error();let file=path.resolve(root,'.'+decodeURIComponent(pathname.slice(prefix.length)));if(file!==path.resolve(root)&&!file.startsWith(root))throw Error();if((await fs.stat(file)).isDirectory())file=path.join(file,'index.html');res.setHeader('Content-Type',types[path.extname(file)]||'application/octet-stream');res.end(await fs.readFile(file));}catch{res.writeHead(404).end();}});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port;

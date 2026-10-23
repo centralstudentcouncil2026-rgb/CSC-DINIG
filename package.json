@@ -14,7 +14,7 @@
     "setup:secret": "node scripts/create-google-setup-secret.js",
     "legacy:migrate": "node scripts/migrate.js",
     "legacy:preflight": "node scripts/preflight.js",
-    "test": "node --test --test-concurrency=1 test/sheets.test.js",
+    "test": "node --test --test-concurrency=1 test/sheets.test.js test/fresh-start.test.js",
     "test:legacy": "node --test --test-concurrency=1 test/application.test.js",
     "check": "node scripts/check.js"
   },
