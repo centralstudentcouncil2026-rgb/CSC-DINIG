@@ -129,3 +129,9 @@ test('involved staff are excluded automatically and client database roles have n
  await assert.rejects(pg.query('SELECT * FROM dinig.reports'),e=>e.code==='42501');await pg.exec('RESET ROLE;');
  const secureCookie=cookie({secure:true},'student','secret',3600);for(const flag of ['__Host-dinig-student','Secure','HttpOnly','SameSite=Strict','Path=/'])assert(secureCookie.includes(flag));
 });
+test('deployment readiness requires both the database and an enabled administrator',async()=>{
+ assert.equal((await fetch(base+'/ready')).status,200);
+ await pg.query('UPDATE dinig.staff_profiles SET enabled=false WHERE user_id=$1',[admin]);
+ try{const response=await fetch(base+'/ready');assert.equal(response.status,503);assert.deepEqual(await response.json(),{ok:false});}
+ finally{await pg.query('UPDATE dinig.staff_profiles SET enabled=true WHERE user_id=$1',[admin]);}
+});

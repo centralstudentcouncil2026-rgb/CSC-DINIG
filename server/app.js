@@ -41,6 +41,9 @@ export function createApp({pool,config,authenticate}){
   try{
    const url=new URL(req.url,config.origin),route=url.pathname;
    if(req.method==='GET'&&route==='/health'){send(res,{ok:true});return;}
+   if(req.method==='GET'&&route==='/ready'){
+    try{const value=await tx(null,db=>one(db,"SELECT EXISTS(SELECT 1 FROM dinig.staff_profiles WHERE enabled AND role='administrator') AS ready"));send(res,{ok:!!value.ready},value.ready?200:503);}catch{send(res,{ok:false},503);}return;
+   }
    if(!route.startsWith('/api/')){
     if(!['GET','HEAD'].includes(req.method))fail(405,'Method not allowed.');
     const filename=['/','/submit','/track','/staff'].includes(route)?'index.html':decodeURIComponent(route.slice(1));

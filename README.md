@@ -29,6 +29,14 @@ The root `index.html` and `staff/index.html` are static **launch notices** for G
 
 For local development only: use `APP_ORIGIN=http://127.0.0.1:3000`, `NODE_ENV=development`, a development database, then `npm run dev`. Production/non-loopback origins require HTTPS. Do not point browser QA at real private reports.
 
+### Supplying the remaining connection safely
+
+The local ignored `.env` can hold `DATABASE_URL`. Obtain the URI from the existing CSC Supabase project's Connect panel, using a connection/pooler mode supported by your server network. Enter the real password **in the local file or hosting secret manager**, never in chat or a committed file. Preserve URI encoding for special characters in passwords. Existing CSC publishable settings can be reused; a service-role API key is not needed by this application.
+
+Run `npm run preflight` to check required settings without printing their values. After applying the migration and provisioning staff, run `npm run preflight -- --database` to verify connectivity, TLS, runtime-role access and the administrator profile. Configure the hosting health check to `/ready`: it returns 200 only when the database/schema is reachable and an enabled D.I.N.I.G. administrator exists. `/health` checks only whether the Node process is alive.
+
+To complete deployment, the operator must provide access to a Node/Docker hosting service, configure the database connection in that service's secret manager, and identify the existing Supabase account email/UUID to authorize as the first administrator. The public GitHub Pages URL can remain an entry link that redirects to the actual server once its HTTPS origin is known.
+
 ## Implemented flows
 
 - `/`: public introduction, submit/track actions, privacy information, small staff access link.
