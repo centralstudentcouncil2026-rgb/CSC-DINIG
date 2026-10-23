@@ -37,7 +37,7 @@ test('Sheet staff accounts have server-enforced assignment and restricted case r
  assert.equal(h.request('/staff/reports/'+id,{},handlerTokens).code,'NOT_FOUND');
  assert(h.request('/staff/reports/'+id+'/action',{action:'assign',staffId:handler.user_id,reason:'Assigned'},admin).ok);assert(h.request('/staff/reports/'+id,{},handlerTokens).ok);
  assert.equal(h.request('/staff/settings',{type:'office',name:'Unauthorized'},handlerTokens).code,'FORBIDDEN');
- const body={...concern(),involvedStaff:handler.public_id},submitted=h.request('/reports',body);assert(submitted.ok);const token=h.request('/track',{code:submitted.data.trackingCode}).data.studentToken,restricted=h.request('/student/report',{}, {studentToken:token}).data.report.id;
+ assert(h.request('/staff/settings',{type:'routing',category:'Safety and Welfare',restricted:true,reviewerId:reviewer.id,targetHours:null},admin).ok);const body={...concern(),category:'Safety and Welfare'},submitted=h.request('/reports',body);assert(submitted.ok);const token=h.request('/track',{code:submitted.data.trackingCode}).data.studentToken,restricted=h.request('/student/report',{}, {studentToken:token}).data.report.id;
  assert.equal(h.request('/staff/reports/'+restricted,{},handlerTokens).code,'NOT_FOUND');
  assert.equal(h.rows('Reports').find(r=>r.id===restricted).sensitive,true);
 });
@@ -53,7 +53,7 @@ test('approved referrals, explicit resolution and independent further-review not
  assert(h.request('/staff/reports/'+id+'/action',{action:'status',status:'Resolved',reason:'Reviewed outcome'},reviewerTokens).ok);assert(h.request('/student/action',{kind:'confirmed',body:''},student).ok);assert.equal(h.request('/student/report',{},student).data.report.status,'Closed');
 });
 test('private attachments are returned only after report authorization',()=>{
- h.clearLimits();const submitted=h.request('/reports',{...concern(),attachments:[{name:'proof.png',data:Buffer.from([137,80,78,71,13,10,26,10,0]).toString('base64')}]});assert(submitted.ok);const tokens={studentToken:h.request('/track',{code:submitted.data.trackingCode}).data.studentToken};const view=h.request('/student/report',{},tokens).data,file=view.attachments[0];assert(!JSON.stringify(view).includes('drive_id'));assert(h.request('/student/attachments/'+file.id,{},tokens).ok);assert.equal(h.request('/student/attachments/'+file.id,{},student).code,'NOT_FOUND');
+ h.clearLimits();const submitted=h.request('/reports',concern());assert(submitted.ok);const tokens={studentToken:h.request('/track',{code:submitted.data.trackingCode}).data.studentToken};assert(h.request('/student/message',{body:'Supporting follow-up',attachments:[{name:'proof.png',data:Buffer.from([137,80,78,71,13,10,26,10,0]).toString('base64')}]},tokens).ok);const view=h.request('/student/report',{},tokens).data,file=view.attachments[0];assert(!JSON.stringify(view).includes('drive_id'));assert(h.request('/student/attachments/'+file.id,{},tokens).ok);assert.equal(h.request('/student/attachments/'+file.id,{},student).code,'NOT_FOUND');
  assert.equal(h.request('/reports',{...concern(),attachments:[{name:'bad.html',data:Buffer.from('<script>evil()</script>').toString('base64')}]}).code,'VALIDATION');
 });
 test('atomic failed writes create neither report nor credential, and spreadsheet cells cannot execute formulas',()=>{
@@ -121,3 +121,11 @@ test('TRACE-style single-admin login uses no spreadsheet calls and cache session
 });
 
 test('single-admin cache rate limit cannot be bypassed by omitting fast mode',()=>{const fast=createHarness();fast.context.prepareFastAdminLogin();const body={email:'aupcscdinig@aup.edu.ph',password:'wrong-password'};for(let i=0;i<10;i++)assert.equal(fast.request('/staff/login',body).code,'UNAUTHORIZED');assert.equal(fast.request('/staff/login',{...body,fast:false}).code,'RATE_LIMIT');});
+
+test('new concern schema retains requested outcome and ignores retired routing/date inputs',()=>{
+ h.clearLimits();const output=h.request('/reports',{...concern(),category:'Others',requestedAction:'Please repair the service.',incidentDate:'2020-01-01',location:'Retired location',sensitive:true,involvedStaff:handler.public_id});assert(output.ok,output.error);
+ const token=h.request('/track',{code:output.data.trackingCode}).data.studentToken;const report=h.request('/student/report',{}, {studentToken:token}).data.report;
+ assert.equal(report.requested_action,'Please repair the service.');assert.equal(report.incident_date,null);assert.equal(report.location,'');
+ const stored=h.rows('Reports').find(r=>r.id===report.id);assert.equal(stored.sensitive,false);assert.deepEqual(stored.conflict_staff,[]);
+ assert.equal(h.request('/reports',{...concern(),attachments:[{name:'retired.png',data:'anything'}]}).code,'VALIDATION');
+});

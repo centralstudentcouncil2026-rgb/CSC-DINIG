@@ -33,9 +33,7 @@
 }
 
 /* Staff login shares the CSC campus photography and softly shaded account card. */
-.student-optionals{margin:0;border:1px solid var(--border);border-radius:10px;padding:0 14px;background:#f8fafc}
-.student-optionals>summary{padding:10px 0;font-size:13px}
-.student-optionals[open]>.form-grid{padding:8px 0 14px}
+.concern-details,.concern-outcome{grid-column:1/-1;min-width:0}
 body[data-student-page] .csc-dashboard-back span{display:inline}
 @media(min-width:901px){
  body[data-student-page]:not([data-student-page=home]) main{width:min(1200px,100%);padding:16px 24px;display:flex;flex-direction:column;justify-content:center}
@@ -52,6 +50,10 @@ body[data-student-page] .csc-dashboard-back span{display:inline}
  body[data-student-page] .form-grid{gap:12px 16px}
  body[data-student-page=submit] #concern>.form-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
  body[data-student-page=submit] #concern>.form-grid>.full:has(input[name=subject]){grid-column:auto}
+ body[data-student-page=submit] .concern-details{grid-column:span 2}
+ body[data-student-page=submit] .concern-outcome{grid-column:span 1}
+ body[data-student-page=submit] .concern-details textarea,body[data-student-page=submit] .concern-outcome textarea{min-height:clamp(140px,23vh,240px);height:clamp(140px,23vh,240px);resize:vertical}
+ body[data-student-page=submit]:not([data-student-page=home]) main>.narrow{max-width:1100px}
  body[data-student-page] .section-label{padding-bottom:12px;margin-bottom:14px}
  body[data-student-page] .form-actions{padding-top:12px;margin-top:14px;gap:10px}
  body[data-student-page] button,body[data-student-page] .button{min-height:40px;padding:9px 16px;font-size:13px}
@@ -76,7 +78,6 @@ body[data-student-page] .csc-dashboard-back span{display:inline}
  body[data-student-page=report] .report-layout .panel{margin-bottom:14px}
  body[data-student-page]>.csc-site-header{flex-shrink:0}
  body[data-student-page]>footer{padding:10px 0;flex-shrink:0}
- body[data-student-page=submit]:has(.student-optionals[open]) #concern{max-height:calc(100dvh - 215px);overflow:auto;overscroll-behavior:contain}
 }
 @media(max-width:900px){
  body[data-student-page] .page-intro{margin:8px 0 18px}
@@ -99,7 +100,7 @@ body[data-student-page] .csc-dashboard-back span{display:inline}
  body[data-student-page] input,body[data-student-page] select{min-height:36px;padding-block:7px}
  body[data-student-page] textarea{min-height:62px}
  body[data-student-page] .form-actions{padding-top:10px;margin-top:10px}
- body[data-student-page=submit] .student-optionals>summary{padding-block:8px}
+ body[data-student-page=submit] .concern-details textarea,body[data-student-page=submit] .concern-outcome textarea{min-height:110px;height:110px}
  body[data-student-page=confirmation] main>.panel{padding:16px 24px}
 }
 body:has(.dinig-login){background:linear-gradient(110deg,#081833c9,#08183366),url('/assets/login-campus.jpg') center/cover fixed}

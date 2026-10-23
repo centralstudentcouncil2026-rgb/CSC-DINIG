@@ -177,21 +177,20 @@ function validateFiles_(items){
 }
 function saveFiles_(db,reportId,files,messageId){if(!files.length)return;const folder=DriveApp.getFolderById(PropertiesService.getScriptProperties().getProperty('ATTACHMENT_FOLDER_ID'));assertPrivate_(folder);files.forEach(item=>{const file=folder.createFile(Utilities.newBlob(item.bytes,item.mime,item.name));assertPrivate_(file);add_(db,'Attachments',{report_id:reportId,message_id:messageId||null,name:item.name,mime:item.mime,size:item.size,drive_id:file.getId()});});}
 function submit_(db,body){
- const codeName=text_(body.codeName,'Code name',1,80),category=text_(body.category,'Category',1,80),subject=text_(body.subject,'Subject',1,180),details=text_(body.details,'Concern details',1,12000),location=text_(body.location||'','Location',0,200),requested=text_(body.requestedAction||'','Requested outcome',0,2000),uploads=validateFiles_(body.attachments);
+ const codeName=text_(body.codeName,'Code name',1,80),category=text_(body.category,'Category',1,80),subject=text_(body.subject,'Subject',1,180),details=text_(body.details,'Concern details',1,12000),requested=text_(body.requestedAction||'','Requested outcome',0,2000);
  if(DINIG_CATEGORIES.indexOf(category)<0||body.privacy!==true||!uuid_(body.submissionKey)||body.website)fail_('VALIDATION','Review the category and privacy acknowledgment.');
- const incident=body.incidentDate||null;if(incident&&(!/^\d{4}-\d{2}-\d{2}$/.test(incident)||isNaN(Date.parse(incident))||new Date(incident).toISOString().slice(0,10)!==incident||incident>now_().slice(0,10)))fail_('VALIDATION','Enter a valid incident date that is not in the future.');
+ if(body.attachments&&(!Array.isArray(body.attachments)||body.attachments.length))fail_('VALIDATION','Attachments are no longer accepted with new concerns.');
  if(get_(db,'SubmissionKeys',body.submissionKey))fail_('DUPLICATE','This concern was already submitted. Use its saved tracking code.');
- const rule=get_(db,'Routing',category),involved=body.involvedStaff?rows_(db,'Staff').find(s=>s.enabled&&s.public_id===body.involvedStaff):null;if(body.involvedStaff&&!involved)fail_('VALIDATION','Choose a currently available staff member.');
- const conflicts=involved?[involved.user_id]:[],sensitive=body.sensitive===true||rule.restricted||!!involved;
+ const rule=get_(db,'Routing',category),conflicts=[],sensitive=!!rule.restricted;
  let reviewer=rule.reviewer_id?get_(db,'Staff',rule.reviewer_id):null;if(reviewer&&!reviewer.enabled)reviewer=null;
  const independent=s=>s.enabled&&s.sensitive_access&&['administrator','restricted_reviewer'].indexOf(s.role)!==-1&&conflicts.indexOf(s.user_id)<0;
  if(sensitive&&(!reviewer||!independent(reviewer)))reviewer=rows_(db,'Staff').find(independent)||null;
  if(sensitive&&!reviewer)fail_('NOT_CONFIGURED','An independent restricted reviewer is not currently available. Please use an approved council contact.');
  const id=Utilities.getUuid(),code=token_('tracking'),reference='DINIG-'+new Date().getUTCFullYear()+'-'+hash_(Utilities.getUuid()).slice(0,12).toUpperCase();
  if(rows_(db,'Reports').some(r=>r.reference===reference))fail_('BUSY','Please retry this submission.');
- add_(db,'Reports',{id:id,reference:reference,code_name:codeName,category:category,subject:subject,details:details,incident_date:incident,location:location,requested_action:requested,sensitive:sensitive,conflict_staff:conflicts,status:'Submitted',priority:'Normal',resolution:'',review_requested:false,due_at:rule.target_hours?new Date(Date.now()+rule.target_hours*3600000).toISOString():null,updated_at:now_()});
+ add_(db,'Reports',{id:id,reference:reference,code_name:codeName,category:category,subject:subject,details:details,incident_date:null,location:'',requested_action:requested,sensitive:sensitive,conflict_staff:conflicts,status:'Submitted',priority:'Normal',resolution:'',review_requested:false,due_at:rule.target_hours?new Date(Date.now()+rule.target_hours*3600000).toISOString():null,updated_at:now_()});
  put_(db,'Credentials',{id:id,report_id:id,code_hash:hash_(code)});put_(db,'SubmissionKeys',{id:body.submissionKey,report_id:id});add_(db,'History',{report_id:id,previous_status:null,new_status:'Submitted',actor_type:'student',actor_id:null,explanation:'Your concern has been submitted.',student_visible:true});
- if(reviewer){add_(db,'Assignments',{report_id:id,staff_id:reviewer.user_id,assigned_by:null});add_(db,'Notifications',{report_id:id,staff_id:reviewer.user_id,kind:'new_report'});}saveFiles_(db,id,uploads);return {reference:reference,trackingCode:code};
+ if(reviewer){add_(db,'Assignments',{report_id:id,staff_id:reviewer.user_id,assigned_by:null});add_(db,'Notifications',{report_id:id,staff_id:reviewer.user_id,kind:'new_report'});}return {reference:reference,trackingCode:code};
 }
 function detail_(db,actor,id){
  const report=report_(db,actor,id),staff=!!actor.staffId;
